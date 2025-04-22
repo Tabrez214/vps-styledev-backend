@@ -1,0 +1,26 @@
+import mongoose, { Document, Schema } from "mongoose";
+
+interface ICategory extends Document {
+  name: string;
+  featured: boolean;
+  parent?: mongoose.Schema.Types.ObjectId;
+  description?: string;
+  metaTitle?: string;
+  metaDescription?: string;
+  imageUrl?: string;
+}
+
+const CategorySchema = new Schema<ICategory> (
+  {
+    name: { type: String, required: true, unique: true},
+    featured: { type: Boolean, default: false},
+    parent: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', default: null},
+    description: { type: String },
+    metaTitle: { type: String },
+    metaDescription: { type: String },
+    imageUrl: { type: String },
+  },
+  { timestamps: true }
+);
+
+export default mongoose.model<ICategory>("Category", CategorySchema)
