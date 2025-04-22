@@ -19,7 +19,7 @@ import fs from 'fs';
 
 dotenv.config();
 
-const app = express();
+export const app = express();
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');

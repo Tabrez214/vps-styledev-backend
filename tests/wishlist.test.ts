@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import Product from "../src/models/product";
 import WishList from "../src/models/wishlist";
 import { authMiddleware } from "../src/middleware/authMiddleware";
+import { app } from "../src/index"; // Import the app from the main file
 
 let userToken: string;
 let testProductId: string;
@@ -23,7 +24,8 @@ beforeAll(async () => {
   });
 
   await product.save();
-  testProductId = product._id.toString();
+  // Fix the type issue by using type assertion
+  testProductId = (product._id as mongoose.Types.ObjectId).toString();
 
   // Generate a test user token (Mock JWT)
   userToken = "Bearer mock-jwt-token"; // Replace with real JWT in real tests
