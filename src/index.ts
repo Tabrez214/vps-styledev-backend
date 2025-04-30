@@ -33,6 +33,7 @@ const allowedOrigins = [
   'https://styledev.in',         // Future domain
   'http://styledev.in',          // Future domain (non-HTTPS)
   'http://localhost:3000',       // Local development
+  'http://localhost:3001',       // Local backend
 ];
 
 // Middleware setup
@@ -49,13 +50,18 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Serve static files from the uploads directory
-app.use('/uploads', express.static(uploadsDir));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  setHeaders: (res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+}));
 
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI || "")

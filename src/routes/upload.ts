@@ -10,14 +10,7 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
 
   if (!req.file) {
     console.log('No file received');
-    res.status(400).json({ message: 'No file uploaded' });
-    return;
-  }
-
-  console.log('Uploaded file details:', req.file);
-  const file = req.file;
-  if (!file) {
-    res.status(400).json({ message: "No file uploaded" });
+    res.status(400).json({ error: 'No file uploaded' });
     return;
   }
 
@@ -30,21 +23,25 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     });
     console.log("newFile:", newFile);
 
+    // Get the caption from the request body
+    const caption = req.body.caption || '';
+
     // Construct the full URL based on the environment
     const baseUrl = process.env.NODE_ENV === 'production' 
       ? process.env.BASE_URL 
       : `http://localhost:${process.env.PORT || 3001}`;
     
-    const fullUrl = `${baseUrl}/uploads/${req.file.filename}`;
+    const fileUrl = `/uploads/${req.file.filename}`;
+    const fullUrl = `${baseUrl}${fileUrl}`;
 
-    // Return a response that the frontend can use:
+    // Return a response that matches the frontend's expected format
     res.json({ 
-      message: "File uploaded successfully", 
-      url: fullUrl,
+      url: fileUrl,
+      caption: caption
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error('Upload error:', error);
+    res.status(500).json({ error: 'Failed to process upload' });
   }
 });
 
