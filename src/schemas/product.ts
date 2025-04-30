@@ -4,7 +4,10 @@ import { ColorSchema } from "./color";
 // Define main product schema
 export const ProductSchema = z.object({
   name: z.string().min(1, "Product name is required"),
-  description: z.string().min(1, "Product description is required"),
+  description: z.string().min(1, "Product description is required").transform((val) => {
+    // Allow HTML content but sanitize it
+    return val.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  }),
   pricePerItem: z.number().positive("Price per item must be greater than 0"),
   minimumOrderQuantity: z.number().positive("Minimum order quantity must be greater than 0"),
   sizes: z.array(

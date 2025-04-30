@@ -18,7 +18,14 @@ interface IProduct extends Document {
 const ProductSchema = new Schema<IProduct>(
   {
     name: { type: String, required: true },
-    description: { type: String, required: true },
+    description: { 
+      type: String, 
+      required: true,
+      set: (val: string) => {
+        // Sanitize HTML content
+        return val.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+      }
+    },
     pricePerItem: { type: Number, required: true },
     minimumOrderQuantity: { type: Number, required: true },
     sizes: [
