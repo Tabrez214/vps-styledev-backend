@@ -35,13 +35,35 @@ router.post("/products", authMiddleware, authorizeRoles("admin"), async (req, re
     }));
 
     // Define sizesArray
-// Convert sizes object to an array if it's an object
-    const sizesArray = Array.isArray(req.body.sizes)
-      ? req.body.sizes
-      : Object.entries(req.body.sizes || {}).map(([size, stock]) => ({
-          size,
-          stock: Number(stock),
-        }));
+    let sizesArray;
+    if (Array.isArray(req.body.sizes)) {
+      // If already in array format, make sure each item has proper size/stock structure
+      sizesArray = req.body.sizes.map((sizeItem: any) => {
+        // Check if it has the expected properties
+        if (typeof sizeItem === 'object' && sizeItem !== null) {
+          // If it's the correct format (contains valid size enum and stock number)
+          if (
+            (sizeItem.size === 'XS' || sizeItem.size === 'S' || sizeItem.size === 'M' || 
+             sizeItem.size === 'L' || sizeItem.size === 'XL' || sizeItem.size === '2XL' || 
+             sizeItem.size === '3XL') && 
+            typeof sizeItem.stock === 'number'
+          ) {
+            return sizeItem;
+          }
+        }
+        // Handle if size is not in expected format
+        return null;
+      }).filter(Boolean); // Remove any null entries
+    } else if (typeof req.body.sizes === 'object' && req.body.sizes !== null) {
+      // If it's an object like {XS: 10, S: 5, etc.}
+      sizesArray = Object.entries(req.body.sizes).map(([size, stock]) => ({
+        size,
+        stock: Number(stock)
+      }));
+    } else {
+      // Default to empty array if no valid sizes
+      sizesArray = [];
+    }
 
     // Construct final product data
     const parsedData = {
@@ -91,7 +113,37 @@ router.get("/products/:id", async (req, res) => {
 // ✅ UPDATE PRODUCT
 router.put("/products/:id", authMiddleware, authorizeRoles("admin"), async (req, res) => {
   try {
-    const validatedProduct = ProductSchema.parse(req.body);
+    // Handle size data transformation before validation
+    let sizesArray;
+    if (Array.isArray(req.body.sizes)) {
+      sizesArray = req.body.sizes.map((sizeItem: any) => {
+        if (
+          typeof sizeItem === 'object' && sizeItem !== null &&
+          (sizeItem.size === 'XS' || sizeItem.size === 'S' || sizeItem.size === 'M' || 
+           sizeItem.size === 'L' || sizeItem.size === 'XL' || sizeItem.size === '2XL' || 
+           sizeItem.size === '3XL') && 
+          typeof sizeItem.stock === 'number'
+        ) {
+          return sizeItem;
+        }
+        return null;
+      }).filter(Boolean);
+    } else if (typeof req.body.sizes === 'object' && req.body.sizes !== null) {
+      sizesArray = Object.entries(req.body.sizes).map(([size, stock]) => ({
+        size,
+        stock: Number(stock)
+      }));
+    } else {
+      sizesArray = [];
+    }
+
+    // Updated request body with transformed sizes
+    const updatedBody = {
+      ...req.body,
+      sizes: sizesArray
+    };
+
+    const validatedProduct = ProductSchema.parse(updatedBody);
     const updatedProduct = await Product.findByIdAndUpdate(req.params.id, validatedProduct, { new: true });
 
     if (!updatedProduct) {
