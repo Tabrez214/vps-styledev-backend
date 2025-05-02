@@ -73,7 +73,7 @@ router.post("/", authMiddleware, authorizeRoles("admin"), upload.single('image')
     console.log("🔥 Incoming request to create category");
     console.log("🔹 req.body:", req.body);
     console.log("🔹 req.file:", req.file);
-    console.log("🔹 User:", req.user); // Check if the user is logged in
+    console.log("�� User:", req.user);
 
     if ((req as any).fileValidationError) {
       console.log("❌ File validation error:", (req as any).fileValidationError);
@@ -81,7 +81,11 @@ router.post("/", authMiddleware, authorizeRoles("admin"), upload.single('image')
       return;
     }
 
-    const formData = { ...req.body, featured: req.body.featured === 'true' };
+    const formData = { 
+      ...req.body, 
+      featured: req.body.featured === 'true',
+      description: req.body.description || '' // Ensure description is always a string
+    };
     console.log("🔹 FormData after processing:", formData);
 
     const validatedData = CategorySchema.parse(formData);
@@ -129,7 +133,11 @@ router.put("/:id", authMiddleware, authorizeRoles("admin"), upload.single('image
       return;
     }
 
-    const formData = { ...req.body, featured: req.body.featured === 'true' };
+    const formData = { 
+      ...req.body, 
+      featured: req.body.featured === 'true',
+      description: req.body.description || '' // Ensure description is always a string
+    };
     const validatedData = CategorySchema.parse(formData);
 
     let parentCategory = null;

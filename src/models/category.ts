@@ -15,7 +15,13 @@ const CategorySchema = new Schema<ICategory> (
     name: { type: String, required: true, unique: true},
     featured: { type: Boolean, default: false},
     parent: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', default: null},
-    description: { type: String },
+    description: { 
+      type: String,
+      set: (val: string) => {
+        // Sanitize HTML content
+        return val?.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+      }
+    },
     metaTitle: { type: String },
     metaDescription: { type: String },
     imageUrl: { type: String },
