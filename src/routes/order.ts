@@ -68,11 +68,11 @@ router.get("/", authMiddleware, async (req: RequestWithUser, res: Response) => {
       status: order.status,
       orderDate: order.createdAt,
       items: order.items.map((item: any) => ({
-        productName: item.productId.name,
+        productName: item.productId?.name || 'Product not found',
         quantity: item.quantity,
         pricePerItem: item.price,
         totalPrice: item.price * item.quantity,
-        image: item.productId.images.find((img: any) => img.isDefault)?.url || item.productId.images[0]?.url
+        image: item.productId?.images?.find((img: any) => img.isDefault)?.url || item.productId?.images?.[0]?.url || null
       })),
       shippingAddress: {
         fullName: (order.address as any)?.fullName,
