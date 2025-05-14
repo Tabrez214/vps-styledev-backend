@@ -8,6 +8,7 @@ interface ICategory extends Document {
   metaTitle?: string;
   metaDescription?: string;
   imageUrl?: string;
+  imageAlt?: string;
 }
 
 const CategorySchema = new Schema<ICategory> (
@@ -25,6 +26,7 @@ const CategorySchema = new Schema<ICategory> (
     metaTitle: { type: String },
     metaDescription: { type: String },
     imageUrl: { type: String },
+    imageAlt: { type: String },
   },
   { timestamps: true }
 );

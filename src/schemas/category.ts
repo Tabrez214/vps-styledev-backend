@@ -11,6 +11,7 @@ export const CategorySchema = z.object({
   metaTitle: z.string().optional(),
   metaDescription: z.string().optional(),
   imageUrl: z.string().url("Invalid image URL format").optional(), // Add imageUrl field
+  imageAlt: z.string().optional(),
 })
 
 export type Category = z.infer<typeof CategorySchema>;

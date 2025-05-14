@@ -3,6 +3,7 @@ import Color from "./color";
 
 interface IProduct extends Document {
   name: string;
+  shortDescription: string;
   description: string;
   pricePerItem: number;
   minimumOrderQuantity: number;
@@ -18,6 +19,15 @@ interface IProduct extends Document {
 const ProductSchema = new Schema<IProduct>(
   {
     name: { type: String, required: true },
+    shortDescription: { 
+      type: String, 
+      required: true,
+      maxlength: 300,
+      set: (val: string) => {
+        // Sanitize HTML content
+        return val.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+      }
+    },
     description: { 
       type: String, 
       required: true,

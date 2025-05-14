@@ -84,7 +84,8 @@ router.post("/", authMiddleware, authorizeRoles("admin"), upload.single('image')
     const formData = { 
       ...req.body, 
       featured: req.body.featured === 'true',
-      description: req.body.description || '' // Ensure description is always a string
+      description: req.body.description || '', // Ensure description is always a string
+      imageAlt: req.body.imageAlt || '' // Ensure imageAlt is always a string
     };
     console.log("🔹 FormData after processing:", formData);
 
@@ -136,7 +137,8 @@ router.put("/:id", authMiddleware, authorizeRoles("admin"), upload.single('image
     const formData = { 
       ...req.body, 
       featured: req.body.featured === 'true',
-      description: req.body.description || '' // Ensure description is always a string
+      description: req.body.description || '', // Ensure description is always a string
+      imageAlt: req.body.imageAlt || '' // Ensure imageAlt is always a string
     };
     const validatedData = CategorySchema.parse(formData);
 
