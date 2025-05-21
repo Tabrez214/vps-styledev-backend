@@ -30,7 +30,8 @@ export const ProductSchema = z.object({
     z.object({
       url: z.string().url("Invalid image URL format"),
       caption: z.string().optional(),
-      isDefault: z.boolean().optional().default(false)
+      isDefault: z.boolean().optional().default(false),
+      imageAlt: z.string().optional(),
     })
   ).min(1, "At least one product image is required"),
   categories: z.array(z.string()).min(1, "At least one category is required"),

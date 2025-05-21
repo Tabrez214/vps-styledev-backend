@@ -35,9 +35,16 @@ const fileFilter = (req: Express.Request, file: MulterFile, cb: multer.FileFilte
   }
 };
 
-const upload = multer({ 
+const upload = multer({
   storage,
-  fileFilter,
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      (req as any).fileValidationError = 'Only image files are allowed!';
+      cb(null, false);
+    }
+  },
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
 

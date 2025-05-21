@@ -7,6 +7,7 @@ declare global {
       user?: {
         userId: string;
         role: string;
+        consent: boolean;
       };
     }
   }

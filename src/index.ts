@@ -16,7 +16,6 @@ import discountRouter from './routes/discount-codes'
 import path from 'path';
 import fs from 'fs';
 
-
 dotenv.config();
 
 export const app = express();

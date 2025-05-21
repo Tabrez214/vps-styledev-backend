@@ -9,7 +9,7 @@ interface IProduct extends Document {
   minimumOrderQuantity: number;
   sizes: { size: string; stock: number }[];
   colors: { name: string; hexCode: string }[];
-  images: { url: string; caption?: string; isDefault?: boolean }[];
+  images: { url: string; caption?: string; isDefault?: boolean; imageAlt?: string }[];
   categories: mongoose.Schema.Types.ObjectId[];
   isActive: boolean; // New field for status
   createdAt: Date;
@@ -54,6 +54,7 @@ const ProductSchema = new Schema<IProduct>(
         url: { type: String, required: true },
         caption: { type: String },
         isDefault: { type: Boolean, default: false },
+        imageAlt: { type: String },
       },
     ],
     categories: [{ type: mongoose.Schema.Types.ObjectId, ref: "Category", required: true }],

@@ -32,6 +32,7 @@ router.post("/products", authMiddleware, authorizeRoles("admin"), async (req, re
       url: `${process.env.BASE_URL}${image.url}`,
       caption: image.caption,
       isDefault: image.isDefault,
+      imageAlt: image.imageAlt,
     }));
 
     // Define sizesArray
@@ -137,10 +138,22 @@ router.put("/products/:id", authMiddleware, authorizeRoles("admin"), async (req,
       sizesArray = [];
     }
 
-    // Updated request body with transformed sizes
+    // Validate images for update (if present)
+    let updatedImages = undefined;
+    if (Array.isArray(req.body.images)) {
+      updatedImages = req.body.images.map((image: any) => ({
+        url: image.url,
+        caption: image.caption,
+        isDefault: image.isDefault,
+        imageAlt: image.imageAlt,
+      }));
+    }
+
+    // Updated request body with transformed sizes and images
     const updatedBody = {
       ...req.body,
-      sizes: sizesArray
+      sizes: sizesArray,
+      ...(updatedImages ? { images: updatedImages } : {}),
     };
 
     const validatedProduct = ProductSchema.parse(updatedBody);

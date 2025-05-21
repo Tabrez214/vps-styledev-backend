@@ -1,6 +1,12 @@
 import mongoose, {Document, Schema} from "mongoose";
 import bcrypt from 'bcrypt';
 
+interface ActivityLog {
+  action: string;
+  route: string;
+  timestamp: Date;
+}
+
 // The IUser Interface
 export interface IUser extends Document {
   _id: string; 
@@ -12,6 +18,11 @@ export interface IUser extends Document {
   isVerified: boolean;
   provider?: 'local' | 'google' | 'facebook';
   comparePassword(candidatePassword: string): Promise<Boolean>;
+  consent: {
+    type: Boolean,
+    default: false
+  },
+  activityLog: ActivityLog[];
 }
 
 //The Mongoose Schema
@@ -22,7 +33,13 @@ const UserSchema: Schema = new Schema({
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   name: { type: String, required: true },
   isVerified: { type: Boolean, default: false },
-  provider: { type: String, enum: ['local', 'google', 'facebook'], default: 'local' }
+  provider: { type: String, enum: ['local', 'google', 'facebook'], default: 'local' },
+  consent: { type: Boolean, default: false },
+  activityLog: [{
+    action: { type: String, required: true },
+    route: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now }
+  }]
 });
 
 //Hashing password before save

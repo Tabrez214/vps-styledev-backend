@@ -13,6 +13,7 @@ export const UserSchema = z.object({
   }),
 
   role: z.enum(["user", "admin"]).default("user"),
+  consent: z.boolean().default(false),
 })
 
 export type UserInput = z.infer<typeof UserSchema>
