@@ -15,10 +15,11 @@ import { IUser } from "../models/user";
 interface TokenPayload {
   userId: string;
   role: string;
+  consent: boolean;
 }
 
 export const generateToken = (user: IUser) => {
-  return jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET as string, {
+  return jwt.sign({ userId: user._id, role: user.role, consent: user.consent }, process.env.JWT_SECRET as string, {
     expiresIn: "24h",
   });
 };

@@ -3,7 +3,7 @@ import { authMiddleware, RequestWithUser } from "../middleware/authMiddleware";
 import { authorizeRoles } from "../middleware/roleMiddleware";
 import User from '../models/user';
 import { giveConsent, getConsentStatus, getMyActivity, trackUserActivity } from '../controllers/user';
-import { getAllUserActivities } from 'controllers/admin';
+import { getAllUserActivities } from '../controllers/admin';
 
 const router = express.Router();
 
