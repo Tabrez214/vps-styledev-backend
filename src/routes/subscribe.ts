@@ -14,7 +14,6 @@ router.post('/subscribe', async (req: Request, res: Response) => {
       return;
     }
 
-    // Check if subscriber already exists
     const existingSubscriber = await Subscriber.findOne({ email });
     if (existingSubscriber) {
       res.status(200).json({
