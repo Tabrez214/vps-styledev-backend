@@ -15,6 +15,7 @@ import paymentRouter from './routes/payment'
 import discountRouter from './routes/discount-codes'
 import path from 'path';
 import fs from 'fs';
+import subscribeRouter from './routes/subscribe';
 
 dotenv.config();
 
@@ -92,6 +93,8 @@ app.use('/address', addressRouter)
 // Use the payment router for payment-related routes
 app.use('/api/v1/payment', paymentRouter);
 app.use('/discount-codes', discountRouter);
+
+app.use('/subscribe', subscribeRouter);
 
 // Start server
 const PORT = process.env.PORT || 3001;
