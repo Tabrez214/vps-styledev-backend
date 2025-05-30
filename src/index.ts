@@ -94,7 +94,7 @@ app.use('/address', addressRouter)
 app.use('/api/v1/payment', paymentRouter);
 app.use('/discount-codes', discountRouter);
 
-app.use('/subscribe', subscribeRouter);
+app.use('/', subscribeRouter);
 
 // Start server
 const PORT = process.env.PORT || 3001;
