@@ -16,7 +16,8 @@ import discountRouter from './routes/discount-codes'
 import path from 'path';
 import fs from 'fs';
 import subscribeRouter from './routes/subscribe';
-
+import tshirtOrdersFormRouter from './routes/tshirtOrdersForm';
+import contactFormRouter from './routes/contactForm';
 dotenv.config();
 
 export const app = express();
@@ -95,7 +96,8 @@ app.use('/api/v1/payment', paymentRouter);
 app.use('/discount-codes', discountRouter);
 
 app.use('/', subscribeRouter);
-
+app.use('/form-order', tshirtOrdersFormRouter);
+app.use('/contact', contactFormRouter);
 // Start server
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

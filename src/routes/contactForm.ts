@@ -1,20 +1,22 @@
 import express, { Request, Response } from 'express';
 const router = express.Router();
-import Subscriber from '../models/subscribe';
+import ContactForm from '../models/contactForm';
 
-router.post('/subscribe', async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
-    const { email, name } = req.body;
+    const { email, name, mobile, description } = req.body;
 
-    if (!email) {
+    // Validate required fields (matching frontend validation)
+    if (!email || !name || !mobile) {
       res.status(400).json({
         success: false,
-        message: 'Email is required',
+        message: 'Name, mobile number, and email are required',
       });
       return;
     }
 
-    const existingSubscriber = await Subscriber.findOne({ email });
+    // Check for existing subscriber
+    const existingSubscriber = await ContactForm.findOne({ email });
     if (existingSubscriber) {
       res.status(200).json({
         success: true,
@@ -23,29 +25,34 @@ router.post('/subscribe', async (req: Request, res: Response) => {
       return;
     }
 
-    // Create new subscriber
-    const subscriber = await Subscriber.create({
+    // Create new contact form entry
+    const contactForm = await ContactForm.create({
       email,
-      name: name || '',
+      name,
+      mobile,
+      description: description || '',
       subscribedAt: new Date(),
       source: 'popup',
     });
 
     res.status(201).json({
       success: true,
-      message: 'Subscription successful',
+      message: 'Message sent successfully!', // Match frontend success message
       data: {
-        id: subscriber._id,
-        email: subscriber.email,
+        id: contactForm._id,
+        email: contactForm.email,
+        name: contactForm.name,
       },
     });
   } catch (error: any) {
-    console.error('Subscription error:', error);
+    console.error('Contact form error:', error);
 
     if (error.name === 'ValidationError') {
+      // Extract specific validation errors
+      const validationErrors = Object.values(error.errors).map((err: any) => err.message);
       res.status(400).json({
         success: false,
-        message: 'Invalid data provided',
+        message: validationErrors[0] || 'Invalid data provided', // Return first validation error
         errors: error.errors,
       });
       return;
@@ -61,12 +68,12 @@ router.post('/subscribe', async (req: Request, res: Response) => {
 
     res.status(500).json({
       success: false,
-      message: 'Internal server error',
+      message: 'Failed to send message. Please try again.', // Match frontend error message
     });
   }
 });
 
-// Unsubscribe
+// Unsubscribe endpoint
 router.post('/unsubscribe', async (req: Request, res: Response) => {
   console.log('Unsubscribe route hit', req.body);
   try {
@@ -80,9 +87,9 @@ router.post('/unsubscribe', async (req: Request, res: Response) => {
       return;
     }
 
-    const subscriber = await Subscriber.findOne({ email });
+    const contactForm = await ContactForm.findOne({ email });
 
-    if (!subscriber) {
+    if (!contactForm) {
       res.status(404).json({
         success: false,
         message: 'Subscriber not found',
@@ -90,7 +97,7 @@ router.post('/unsubscribe', async (req: Request, res: Response) => {
       return;
     }
 
-    if (!subscriber.isSubscribed) {
+    if (!contactForm.isSubscribed) {
       res.status(200).json({
         success: true,
         message: 'You are already unsubscribed',
@@ -98,8 +105,8 @@ router.post('/unsubscribe', async (req: Request, res: Response) => {
       return;
     }
 
-    subscriber.isSubscribed = false;
-    await subscriber.save();
+    contactForm.isSubscribed = false;
+    await contactForm.save();
 
     res.status(200).json({
       success: true,
@@ -113,6 +120,5 @@ router.post('/unsubscribe', async (req: Request, res: Response) => {
     });
   }
 });
-
 
 export default router;
