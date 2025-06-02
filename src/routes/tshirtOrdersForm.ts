@@ -74,7 +74,7 @@ interface OrderRequestBody {
   phone: string;
   tShirtType: string;
   quantity: string;
-  sizes: { size: string; quantity: number }[];
+  sizes: string | { size: string; quantity: number }[]; // Can be string or array
   colorPreference: string;
   customText?: string;
   deliveryLocation: string;
@@ -85,6 +85,7 @@ interface OrderRequestBody {
 router.post('/submit-order', upload.single('fileUpload'), async (req: Request, res: Response) => {
   try {
     console.log('Request received for order submission');
+    console.log('Raw request body:', req.body);
     console.log('File info:', req.file ? {
       originalname: req.file.originalname,
       filename: req.file.filename,
@@ -98,19 +99,50 @@ router.post('/submit-order', upload.single('fileUpload'), async (req: Request, r
       phone,
       tShirtType,
       quantity,
-      sizes,
+      sizes: rawSizes,
       colorPreference,
       customText,
       deliveryLocation,
       deliveryDate
     }: OrderRequestBody = req.body;
 
+    // Parse sizes if it's a string (JSON)
+    let sizes: { size: string; quantity: number }[];
+    try {
+      if (typeof rawSizes === 'string') {
+        sizes = JSON.parse(rawSizes);
+      } else {
+        sizes = rawSizes;
+      }
+    } catch (error) {
+      console.error('Error parsing sizes:', error);
+      res.status(400).json({
+        success: false,
+        message: 'Invalid sizes format'
+      });
+      return;
+    }
+
+    console.log('Parsed sizes:', sizes);
+
     // Validate required fields
     if (!name || !email || !tShirtType || !quantity || !sizes || !Array.isArray(sizes) || sizes.length === 0 || !colorPreference || !deliveryLocation || !deliveryDate) {
+      const missingFields = [];
+      if (!name) missingFields.push('name');
+      if (!email) missingFields.push('email');
+      if (!tShirtType) missingFields.push('tShirtType');
+      if (!quantity) missingFields.push('quantity');
+      if (!sizes || !Array.isArray(sizes) || sizes.length === 0) missingFields.push('sizes');
+      if (!colorPreference) missingFields.push('colorPreference');
+      if (!deliveryLocation) missingFields.push('deliveryLocation');
+      if (!deliveryDate) missingFields.push('deliveryDate');
+
+      console.log('Missing fields:', missingFields);
       res.status(400).json({
         success: false,
         message: 'Missing required fields',
-        required: ['name', 'email', 'tShirtType', 'quantity', 'sizes', 'colorPreference', 'deliveryLocation', 'deliveryDate']
+        required: ['name', 'email', 'tShirtType', 'quantity', 'sizes', 'colorPreference', 'deliveryLocation', 'deliveryDate'],
+        missing: missingFields
       }); 
       return;
     }
@@ -182,6 +214,8 @@ router.post('/submit-order', upload.single('fileUpload'), async (req: Request, r
       deliveryDate: deliveryDateObj,
       fileUpload: fileUploadPath
     };
+
+    console.log('Order data to save:', orderData);
 
     // Create new order
     const newOrder = new TShirtOrder(orderData);
