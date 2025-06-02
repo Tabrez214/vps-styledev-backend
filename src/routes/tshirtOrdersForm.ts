@@ -1,18 +1,51 @@
 import express, { Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
-import TShirtOrder, { ITShirtOrder } from '../models/tshirtOrdersForm'; // Adjust path as needed
+import fs from 'fs';
+import TShirtOrder, { ITShirtOrder } from '../models/tshirtOrdersForm';
 
 const router = express.Router();
+
+// Get absolute path to uploads directory
+const uploadsDir = path.resolve(process.cwd(), 'uploads');
+
+// Ensure uploads directory exists with proper error handling
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    console.log('Uploads directory created at:', uploadsDir);
+  } else {
+    console.log('Uploads directory exists at:', uploadsDir);
+  }
+} catch (error) {
+  console.error('Error creating uploads directory:', error);
+}
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // Make sure this directory exists
+    // Use absolute path and ensure directory exists
+    try {
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      console.log('Saving file to:', uploadsDir);
+      cb(null, uploadsDir);
+    } catch (error) {
+      console.error('Error in destination function:', error);
+      cb(error as Error, '');
+    }
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    try {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const filename = file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname);
+      console.log('Generated filename:', filename);
+      cb(null, filename);
+    } catch (error) {
+      console.error('Error in filename function:', error);
+      cb(error as Error, '');
+    }
   }
 });
 
@@ -40,17 +73,25 @@ interface OrderRequestBody {
   email: string;
   phone: string;
   tShirtType: string;
-  quantity: string; // Will be converted to number
+  quantity: string;
   sizes: { size: string; quantity: number }[];
   colorPreference: string;
   customText?: string;
   deliveryLocation: string;
-  deliveryDate: string; // Will be converted to Date
+  deliveryDate: string;
 }
 
 // POST /api/submit-order
 router.post('/submit-order', upload.single('fileUpload'), async (req: Request, res: Response) => {
   try {
+    console.log('Request received for order submission');
+    console.log('File info:', req.file ? {
+      originalname: req.file.originalname,
+      filename: req.file.filename,
+      path: req.file.path,
+      size: req.file.size
+    } : 'No file uploaded');
+
     const {
       name,
       email,
@@ -114,6 +155,19 @@ router.post('/submit-order', upload.single('fileUpload'), async (req: Request, r
       return;
     }
 
+    // Verify file exists if uploaded
+    let fileUploadPath = undefined;
+    if (req.file) {
+      const fullFilePath = req.file.path;
+      if (fs.existsSync(fullFilePath)) {
+        fileUploadPath = fullFilePath;
+        console.log('File successfully saved at:', fullFilePath);
+      } else {
+        console.error('File was not saved properly:', fullFilePath);
+        // Continue without file rather than failing the entire request
+      }
+    }
+
     // Prepare order data
     const orderData: Partial<ITShirtOrder> = {
       name: name.trim(),
@@ -126,7 +180,7 @@ router.post('/submit-order', upload.single('fileUpload'), async (req: Request, r
       customText: customText?.trim(),
       deliveryLocation: deliveryLocation.trim(),
       deliveryDate: deliveryDateObj,
-      fileUpload: req.file ? req.file.path : undefined
+      fileUpload: fileUploadPath
     };
 
     // Create new order
@@ -167,10 +221,23 @@ router.post('/submit-order', upload.single('fileUpload'), async (req: Request, r
       let message = 'File upload error';
       if (error.code === 'LIMIT_FILE_SIZE') {
         message = 'File too large. Maximum size is 5MB.';
+      } else if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+        message = 'Unexpected file field.';
       }
       res.status(400).json({
         success: false,
-        message
+        message,
+        error: error.code
+      });
+      return;
+    }
+
+    // Handle file system errors
+    if (error.code === 'ENOENT') {
+      res.status(500).json({
+        success: false,
+        message: 'File system error. Please try again.',
+        error: 'Directory access issue'
       });
       return;
     }
@@ -187,7 +254,8 @@ router.post('/submit-order', upload.single('fileUpload'), async (req: Request, r
     // Generic server error
     res.status(500).json({
       success: false,
-      message: 'Internal server error. Please try again later.'
+      message: 'Internal server error. Please try again later.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
     return;
   }
@@ -204,7 +272,7 @@ router.get('/orders', async (req: Request, res: Response) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-      .select('-__v'); // Exclude version field
+      .select('-__v');
 
     const totalOrders = await TShirtOrder.countDocuments();
 
