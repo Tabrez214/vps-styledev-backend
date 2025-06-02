@@ -109,10 +109,11 @@ router.post('/register', async (req: Request, res: Response) => {
 });
 
 // Login
+// Login route with improved error handling
 router.post('/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
-    console.log('Login attempt for:', email); // Add this line for debugging
+    console.log('Login attempt for:', email);
 
     // Validate input
     if (!email || !password) {
@@ -123,13 +124,22 @@ router.post('/login', async (req: Request, res: Response) => {
       return;
     }
 
+    // Validate email format
+    if (!validator.isEmail(email)) {
+      res.status(400).json({ 
+        error: "Invalid email",
+        message: "Please enter a valid email address"
+      });
+      return;
+    }
+
     // Find user by email
     const user = await User.findOne({ email });
     if (!user) {
       console.log('Login attempt: User not found for email:', email);
       res.status(400).json({ 
-        error: "Invalid credentials",
-        message: "User not found"
+        error: "User not found",
+        message: "No account found with this email address"
       });
       return;
     }
@@ -139,7 +149,7 @@ router.post('/login', async (req: Request, res: Response) => {
       console.log('Login attempt: User not verified:', email);
       res.status(400).json({ 
         error: "Email not verified",
-        message: "Please verify your email first"
+        message: "Please verify your email address before signing in"
       });
       return;
     }
@@ -149,15 +159,15 @@ router.post('/login', async (req: Request, res: Response) => {
     console.log('Login attempt:', {
       email,
       userId: user._id,
-      isPasswordValid,
-      passwordAttempted: password,
-      storedPasswordHash: user.password
+      isPasswordValid
+      // Remove password logging for security
     });
 
     if (!isPasswordValid) {
+      console.log('Login attempt: Invalid password for user:', email);
       res.status(400).json({ 
-        error: "Invalid credentials",
-        message: "Invalid password"
+        error: "Invalid password",
+        message: "Incorrect password"
       });
       return;
     }
@@ -165,6 +175,7 @@ router.post('/login', async (req: Request, res: Response) => {
     // Generate JWT token
     const token = generateToken(user);
 
+    console.log('Login successful for user:', email);
     res.json({
       message: "Login successful",
       token,
@@ -180,7 +191,7 @@ router.post('/login', async (req: Request, res: Response) => {
     console.error('Login error:', error);
     res.status(500).json({ 
       error: "Server error",
-      message: "An error occurred during login"
+      message: "An error occurred during login. Please try again."
     });
     return;
   }
