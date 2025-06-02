@@ -1,30 +1,33 @@
 import mongoose, { Document, Schema } from "mongoose";
-import slugify from 'slugify'; // Import slugify
+import slugify from 'slugify';
 
 interface ICategory extends Document {
   name: string;
-  slug: string; // Added slug field
+  slug?: string; // Made optional
   featured: boolean;
-  parent?: mongoose.Schema.Types.ObjectId | ICategory | null; // Allow population
+  parent?: mongoose.Schema.Types.ObjectId | ICategory | null;
   description?: string;
   metaTitle?: string;
   metaDescription?: string;
   imageUrl?: string;
   imageAlt?: string;
-  // Added for slug path generation
   ancestors?: { _id: mongoose.Schema.Types.ObjectId; name: string; slug: string }[];
   createdAt: Date;
   updatedAt: Date;
-  updateAncestors(): Promise<void>; // Method signature
+  getSlug(): string; // Virtual method to get slug
+  updateAncestors(): Promise<void>;
 }
 
 const CategorySchema = new Schema<ICategory>(
   {
     name: { type: String, required: true, unique: true },
-    slug: { type: String, unique: true, index: true }, // Added slug field, unique and indexed
+    slug: { 
+      type: String, 
+      sparse: true, // Allows null/undefined values, only enforces uniqueness on non-null values
+      index: true 
+    },
     featured: { type: Boolean, default: false },
     parent: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', default: null },
-    // Store ancestor path for easier slug lookup
     ancestors: [{
       _id: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
       name: String,
@@ -33,7 +36,6 @@ const CategorySchema = new Schema<ICategory>(
     description: {
       type: String,
       set: (val: string) => {
-        // Basic sanitization (consider a more robust library like DOMPurify if needed)
         return val?.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
       }
     },
@@ -45,34 +47,35 @@ const CategorySchema = new Schema<ICategory>(
   { timestamps: true }
 );
 
-// Middleware to generate slug before saving
+// Virtual method to get slug (stored or generated)
+CategorySchema.methods.getSlug = function(): string {
+  return this.slug || slugify(this.name, { lower: true, strict: true });
+};
+
+// Add virtual field for easy access
+CategorySchema.virtual('effectiveSlug').get(function() {
+  return this.getSlug();
+});
+
+// Middleware to handle slug generation only when explicitly set
 CategorySchema.pre<ICategory>('save', async function(next) {
-  if (this.isModified('name') && !this.slug) {
-    // Only auto-generate slug if it's not already set
-    let baseSlug = slugify(this.name, { lower: true, strict: true });
-    let slug = baseSlug;
-    let counter = 1;
-    
-    // Ensure slug uniqueness
+  // Only process slug if it's being explicitly set
+  if (this.isModified('slug') && this.slug) {
+    // Ensure custom slug uniqueness
     const CategoryModel = this.constructor as mongoose.Model<ICategory>;
-    while (await CategoryModel.findOne({ slug: slug, _id: { $ne: this._id } })) {
-      slug = `${baseSlug}-${counter}`;
-      counter++;
+    const existingWithSlug = await CategoryModel.findOne({ 
+      slug: this.slug, 
+      _id: { $ne: this._id } 
+    });
+    
+    if (existingWithSlug) {
+      throw new Error(`Slug '${this.slug}' already exists`);
     }
-    this.slug = slug;
   }
   next();
 });
 
-// Middleware to update ancestors path after saving
-CategorySchema.post<ICategory>('save', async function(doc, next) {
-  if (doc.isModified('parent') || doc.isNew) {
-    await doc.updateAncestors();
-  }
-  next();
-});
-
-// Method to rebuild the ancestors array
+// Update ancestors to use effective slugs
 CategorySchema.methods.updateAncestors = async function() {
   if (!this.parent) {
     this.ancestors = [];
@@ -83,20 +86,19 @@ CategorySchema.methods.updateAncestors = async function() {
       .exec();
       
     if (parentCategory) {
+      const parentSlug = parentCategory.getSlug();
       this.ancestors = parentCategory.ancestors ? [
         ...parentCategory.ancestors,
-        { _id: parentCategory._id, name: parentCategory.name, slug: parentCategory.slug }
+        { _id: parentCategory._id, name: parentCategory.name, slug: parentSlug }
       ] : [
-        { _id: parentCategory._id, name: parentCategory.name, slug: parentCategory.slug }
+        { _id: parentCategory._id, name: parentCategory.name, slug: parentSlug }
       ];
     } else {
-      // Handle case where parent might not be found (though validation should prevent this)
       this.ancestors = [];
-      this.parent = null; // Clear invalid parent reference
+      this.parent = null;
     }
   }
   
-  // Save the document without triggering pre-save hooks again for slug
   await mongoose.model<ICategory>('Category').updateOne(
     { _id: this._id }, 
     { $set: { ancestors: this.ancestors, parent: this.parent } }
