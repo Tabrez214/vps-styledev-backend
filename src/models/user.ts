@@ -23,6 +23,7 @@ export interface IUser extends Document {
     default: false
   },
   activityLog: ActivityLog[];
+  newsletterSubscribed: boolean;
 }
 
 //The Mongoose Schema
@@ -35,6 +36,7 @@ const UserSchema: Schema = new Schema({
   isVerified: { type: Boolean, default: false },
   provider: { type: String, enum: ['local', 'google', 'facebook'], default: 'local' },
   consent: { type: Boolean, default: false },
+  newsletterSubscribed: { type: Boolean, default: false },
   activityLog: [{
     action: { type: String, required: true },
     route: { type: String, required: true },
