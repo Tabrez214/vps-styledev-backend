@@ -34,13 +34,7 @@ const fileFilter = (req: Express.Request, file: Express.Multer.File, cb: multer.
 // Multer upload configuration
 const upload = multer({
   storage,
-  fileFilter: (req, file, cb) => {    
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type. Only images are allowed.'));
-    }
-  },
+  fileFilter, // Use the defined fileFilter function
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
 });
 
