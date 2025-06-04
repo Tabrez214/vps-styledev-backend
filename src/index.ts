@@ -57,13 +57,44 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
-  setHeaders: (res) => {
+app.use('/uploads', express.static(uploadsDir, {
+  maxAge: '1d', // Cache for 1 day
+  etag: true,
+  lastModified: true,
+  setHeaders: (res, path) => {
+    // Set proper content type for images
+    if (path.endsWith('.jpg') || path.endsWith('.jpeg')) {
+      res.setHeader('Content-Type', 'image/jpeg');
+    } else if (path.endsWith('.png')) {
+      res.setHeader('Content-Type', 'image/png');
+    } else if (path.endsWith('.gif')) {
+      res.setHeader('Content-Type', 'image/gif');
+    } else if (path.endsWith('.webp')) {
+      res.setHeader('Content-Type', 'image/webp');
+    }
+    
+    // Enable CORS for images
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
     res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
   }
 }));
+
+app.use('/uploads', (req, res, next) => {
+  res.status(404).json({ 
+    error: 'File not found',
+    message: `The requested file ${req.path} was not found on the server.`
+  });
+});
+
+// Health check endpoint
+app.get('/uploads/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    uploadsDir: uploadsDir,
+    exists: fs.existsSync(uploadsDir)
+  });
+});
 
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI || "")
