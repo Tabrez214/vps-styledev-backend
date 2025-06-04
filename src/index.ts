@@ -80,12 +80,6 @@ app.use('/uploads', express.static(uploadsDir, {
   }
 }));
 
-app.use('/uploads', (req, res, next) => {
-  res.status(404).json({ 
-    error: 'File not found',
-    message: `The requested file ${req.path} was not found on the server.`
-  });
-});
 
 // Health check endpoint
 app.get('/uploads/health', (req, res) => {
