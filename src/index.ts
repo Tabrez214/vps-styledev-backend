@@ -22,25 +22,28 @@ dotenv.config();
 
 export const app = express();
 
-// Create uploads directory if it doesn't exist
-const uploadsDir = path.join(__dirname, 'uploads');
+// Create uploads directory with proper path resolution
+const uploadsDir = path.resolve(process.cwd(), 'uploads');
+console.log('Uploads directory:', uploadsDir);
+console.log('Directory exists:', fs.existsSync(uploadsDir));
+
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('Created uploads directory');
 }
 
 // Define allowed origins
 const allowedOrigins = [
-  'http://82.29.160.117:3000',  // Current frontend URL
-  'https://styledev.in',         // Future domain
-  'http://styledev.in',          // Future domain (non-HTTPS)
-  'http://localhost:3000',       // Local development
-  'http://localhost:3001',       // Local backend
+  'http://82.29.160.117:3000',
+  'https://styledev.in',
+  'http://styledev.in',
+  'http://localhost:3000',
+  'http://localhost:3001',
 ];
 
 // Middleware setup
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
     if (allowedOrigins.indexOf(origin) === -1) {
@@ -57,20 +60,49 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Debug middleware to log all requests to /uploads
+app.use('/uploads', (req, res, next) => {
+  console.log('Request to uploads:', req.path);
+  const fullPath = path.join(uploadsDir, req.path);
+  console.log('Full file path:', fullPath);
+  console.log('File exists:', fs.existsSync(fullPath));
+  if (fs.existsSync(fullPath)) {
+    const stats = fs.statSync(fullPath);
+    console.log('File stats:', {
+      size: stats.size,
+      isFile: stats.isFile(),
+      permissions: stats.mode.toString(8)
+    });
+  }
+  next();
+});
+
+// Static file serving for uploads - MOVED BEFORE OTHER ROUTES
 app.use('/uploads', express.static(uploadsDir, {
-  maxAge: '1d', // Cache for 1 day
+  maxAge: '1d',
   etag: true,
   lastModified: true,
-  setHeaders: (res, path) => {
+  dotfiles: 'deny',
+  index: false,
+  setHeaders: (res, filePath) => {
+    console.log('Serving file:', filePath);
+    
     // Set proper content type for images
-    if (path.endsWith('.jpg') || path.endsWith('.jpeg')) {
-      res.setHeader('Content-Type', 'image/jpeg');
-    } else if (path.endsWith('.png')) {
-      res.setHeader('Content-Type', 'image/png');
-    } else if (path.endsWith('.gif')) {
-      res.setHeader('Content-Type', 'image/gif');
-    } else if (path.endsWith('.webp')) {
-      res.setHeader('Content-Type', 'image/webp');
+    const ext = path.extname(filePath).toLowerCase();
+    switch(ext) {
+      case '.jpg':
+      case '.jpeg':
+        res.setHeader('Content-Type', 'image/jpeg');
+        break;
+      case '.png':
+        res.setHeader('Content-Type', 'image/png');
+        break;
+      case '.gif':
+        res.setHeader('Content-Type', 'image/gif');
+        break;
+      case '.webp':
+        res.setHeader('Content-Type', 'image/webp');
+        break;
     }
     
     // Enable CORS for images
@@ -80,13 +112,22 @@ app.use('/uploads', express.static(uploadsDir, {
   }
 }));
 
-
 // Health check endpoint
 app.get('/uploads/health', (req, res) => {
+  const testFile = 'category-1749047438829.jpg';
+  const testPath = path.join(uploadsDir, testFile);
+  
   res.json({ 
     status: 'ok', 
     uploadsDir: uploadsDir,
-    exists: fs.existsSync(uploadsDir)
+    exists: fs.existsSync(uploadsDir),
+    testFile: {
+      name: testFile,
+      path: testPath,
+      exists: fs.existsSync(testPath),
+      stats: fs.existsSync(testPath) ? fs.statSync(testPath) : null
+    },
+    files: fs.readdirSync(uploadsDir).slice(0, 10) // Show first 10 files
   });
 });
 
@@ -124,8 +165,10 @@ app.use('/discount-codes', discountRouter);
 app.use('/', subscribeRouter);
 app.use('/form-order', tshirtOrdersFormRouter);
 app.use('/contact', contactFormRouter);
+
 // Start server
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+  console.log(`Static files served from: ${uploadsDir}`);
 });
