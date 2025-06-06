@@ -2,8 +2,8 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 
-// Get the absolute path to the uploads directory
-const uploadDir = path.resolve(__dirname, '../uploads');
+// Get the absolute path to the uploads directory (consistent with index.ts)
+const uploadDir = path.resolve(process.cwd(), 'uploads');
 
 // Ensure the "uploads" directory exists
 if (!fs.existsSync(uploadDir)) {
