@@ -20,10 +20,24 @@ interface TokenPayload {
 
 export const generateToken = (user: IUser) => {
   return jwt.sign({ userId: user._id, role: user.role, consent: user.consent }, process.env.JWT_SECRET as string, {
-    expiresIn: "24h",
+    expiresIn: "90d",
   });
 };
 
 export const verifyToken = (token: string): TokenPayload => {
   return jwt.verify(token, process.env.JWT_SECRET as string) as TokenPayload;
+};
+
+
+// Optional: Generate different token types
+export const generateTokens = (payload: any) => {
+  const accessToken = jwt.sign(payload, process.env.JWT_SECRET as string, { 
+    expiresIn: '90d' // Long-lived for e-commerce
+  });
+  
+  const refreshToken = jwt.sign(payload, process.env.JWT_SECRET as string, { 
+    expiresIn: '1y' // Even longer for refresh
+  });
+  
+  return { accessToken, refreshToken };
 };
