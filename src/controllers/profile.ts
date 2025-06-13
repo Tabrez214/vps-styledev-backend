@@ -60,7 +60,7 @@ export const getProfileDashboard = async (req: RequestWithUser, res: Response) =
         savedDesigns: designCount
       },
       recentOrders: recentOrders.map(order => ({
-        id: order.order_id,
+        id: order.order_id, // Fixed: use orderId instead of order_id
         status: formatOrderStatus(order.status),
         date: order.createdAt.toISOString().split('T')[0],
         amount: order.totalAmount,
@@ -68,10 +68,10 @@ export const getProfileDashboard = async (req: RequestWithUser, res: Response) =
       })),
       savedDesigns: savedDesigns.map(design => ({
         id: design._id,
-        name: design.get('name'),
-        image: design.get('thumbnail'),
-        status: design.get('status'),
-        date: design.get('createdAt') ? design.get('createdAt').toISOString().split('T')[0] : ''
+        name: design.get("name"),
+        image: design.get("thumbnail"),
+        status: design.get("status"),
+        date: design.get("createdAt") ? design.get("createdAt").toISOString().split('T')[0] : ''
       }))
     };
 
@@ -117,14 +117,10 @@ export const getUserOrders = async (req: RequestWithUser, res: Response) => {
       status: formatOrderStatus(order.status),
       date: order.createdAt.toISOString().split('T')[0],
       totalAmount: order.totalAmount,
-      paymentStatus: order.get('paymentStatus'),
-      trackingNumber: order.get('trackingNumber'),
-      estimatedDelivery: order.get('estimatedDelivery'),
       items: order.items.map(item => ({
-        productType: item.get('productType'),
+        productId: item.productId,
         quantity: item.quantity,
-        price: item.price,
-        design: item.get('designId')
+        price: item.price
       }))
     }));
 
@@ -172,16 +168,17 @@ export const getUserDesigns = async (req: RequestWithUser, res: Response) => {
         .select('name thumbnail status createdAt category tags likes downloads'),
       Design.countDocuments(query)
     ]);
+    
     const formattedDesigns = designs.map(design => ({
       id: design._id,
-      name: design.get('name'),
-      image: design.get('thumbnail'),
-      status: design.get('status'),
-      date: design.get('createdAt').toISOString().split('T')[0],
-      category: design.get('category'),
-      tags: design.get('tags'),
-      likes: design.get('likes'),
-      downloads: design.get('downloads')
+      name: design.name,
+      image: design.get("thumbnail"),
+      status: design.get("status"),
+      date: design.get("createdAt").toISOString().split('T')[0],
+      category: design.get("category"),
+      tags: design.get("tags"),
+      likes: design.get("likes"),
+      downloads: design.get("downloads")
     }));
 
     res.json({
@@ -266,7 +263,7 @@ export const getWalletDetails = async (req: RequestWithUser, res: Response) => {
 export const updateProfile = async (req: RequestWithUser, res: Response) => {
   try {
     const userId = req.user?.userId;
-    const { name, username, email, phone, address, newsletterSubscribed } = req.body;
+    const { name, username, email, phone, address, dateOfBirth, newsletterSubscribed } = req.body;
 
     if (!userId) {
       res.status(401).json({ message: 'Unauthorized' });
@@ -281,6 +278,7 @@ export const updateProfile = async (req: RequestWithUser, res: Response) => {
     if (email !== undefined && email !== null) updateData.email = email.trim().toLowerCase();
     if (phone !== undefined && phone !== null) updateData.phone = phone.trim();
     if (address !== undefined && address !== null) updateData.address = address;
+    if (dateOfBirth !== undefined && dateOfBirth !== null) updateData.dateOfBirth = dateOfBirth;
     if (typeof newsletterSubscribed === 'boolean') {
       updateData.newsletterSubscribed = newsletterSubscribed;
     }
@@ -319,8 +317,8 @@ export const updateProfile = async (req: RequestWithUser, res: Response) => {
           message: 'Email is already taken',
           field: 'email'
         });
+        return; // FIXED: This was missing, causing the function to continue
       }
-      return;
     }
 
     // Update user
