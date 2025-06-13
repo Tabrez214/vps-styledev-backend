@@ -4,6 +4,7 @@ import Order from '../models/order';
 import Design from '../models/design';
 import { Wallet, WalletTransaction } from '../models/wallet';
 import { RequestWithUser } from '../middleware/authMiddleware';
+import bcrypt from 'bcrypt';
 
 // Get user profile dashboard data
 export const getProfileDashboard = async (req: RequestWithUser, res: Response) => {
@@ -405,4 +406,87 @@ const formatOrderStatus = (status: string): string => {
     'cancelled': 'Cancelled'
   };
   return statusMap[status] || status;
+};
+
+// Change user password
+export const changePassword = async (req: RequestWithUser, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!userId) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+
+    // Validate required fields
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({ 
+        message: 'Current password and new password are required' 
+      });
+      return;
+    }
+
+    // Validate new password strength (optional)
+    if (newPassword.length < 8) {
+      res.status(400).json({ 
+        message: 'New password must be at least 8 characters long' 
+      });
+      return;
+    }
+
+    // Get user with password field
+    const user = await User.findById(userId);
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    // Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isCurrentPasswordValid) {
+      res.status(400).json({ 
+        message: 'Current password is incorrect' 
+      });
+      return;
+    }
+
+    // Check if new password is different from current
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword) {
+      res.status(400).json({ 
+        message: 'New password must be different from current password' 
+      });
+      return;
+    }
+
+    // Hash new password
+    const saltRounds = 12;
+    const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
+
+    // Update user password
+    await User.findByIdAndUpdate(userId, {
+      password: hashedNewPassword,
+      passwordChangedAt: new Date()
+    });
+
+    // Log the activity
+    await User.findByIdAndUpdate(userId, {
+      $push: {
+        activityLog: {
+          action: 'password_changed',
+          route: '/profile/change-password',
+          timestamp: new Date()
+        }
+      }
+    });
+
+    res.status(200).json({
+      message: 'Password changed successfully'
+    });
+
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 };
