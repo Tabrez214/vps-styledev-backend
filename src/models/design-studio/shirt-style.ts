@@ -4,14 +4,19 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IShirtStyle extends Document {
   name: string;
   price: number;
-  image: string;
+  images: { front: string; back: string; left: string; right: string };
   colors: { name: string; value: string }[];
 }
 
 const ShirtStyleSchema: Schema = new Schema({
   name: { type: String, required: true },
   price: { type: Number, required: true },
-  image: { type: String, required: true },
+  images: {
+    front: { type: String, required: true },
+    back: { type: String, required: true },
+    left: { type: String, required: true },
+    right: { type: String, required: true }
+  },
   colors: [{ name: String, value: String }],
 });
 
