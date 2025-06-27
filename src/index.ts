@@ -19,14 +19,8 @@ import subscribeRouter from './routes/subscribe';
 import tshirtOrdersFormRouter from './routes/tshirtOrdersForm';
 import contactFormRouter from './routes/contactForm';
 import profileRouter from './routes/profile/profile';
-import invoiceGeneratorRouter from './routes/invoiceGenerator'
-import tshirtRouter from './routes/design-studio/tshirtStyle';
-import assetRouter from './routes/design-studio/asset';
-import designRouter from './routes/design-studio/design';
-import designOrderRouter from './routes/design-studio/order';
 import chooseShirtRouter from './routes/design-studio/choose-shirt';
 import clipartLibraryRouter from './routes/design-studio/clipart-library';
-import emailRouter from './routes/email'
 dotenv.config();
 
 export const app = express();
@@ -175,15 +169,9 @@ app.use('/', subscribeRouter);
 app.use('/form-order', tshirtOrdersFormRouter);
 app.use('/contact', contactFormRouter);
 app.use('/profile', profileRouter);
-app.use('/invoice', invoiceGeneratorRouter);
 // Design Studio routes - all under /design-studio prefix
-app.use('/design-studio/tshirt-styles', tshirtRouter);
-app.use('/design-studio/assets', assetRouter);
-app.use('/design-studio/designs', designRouter);
-app.use('/design-studio/orders', designOrderRouter);
 app.use('/design-studio/choose-shirt', chooseShirtRouter);
 app.use('/design-studio/clipart-library', clipartLibraryRouter);
-app.use('/email', emailRouter)
 
 // Start server
 const PORT = process.env.PORT || 3001;
