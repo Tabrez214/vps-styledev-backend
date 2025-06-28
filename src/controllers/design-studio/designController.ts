@@ -22,11 +22,31 @@ export const getDesign = async (req: Request, res: Response) => {
 // Create a new design
 export const createDesign = async (req: Request, res: Response) => {
   try {
-    const { name, elements, userId } = req.body;
-    const newDesign = new Design({ name, elements, userId });
+    const { name, elements, tshirt, shareableId, metadata, dimensions, isPublic } = req.body;
+    
+    // Create new design with all required fields
+    const newDesign = new Design({
+      name,
+      elements,
+      tshirt,
+      shareableId,
+      metadata,
+      dimensions,
+      isPublic: isPublic || false
+    });
+    
     await newDesign.save();
-    res.status(201).json(newDesign);
+    res.status(201).json({
+      success: true,
+      data: {
+        _id: newDesign._id,
+        shareableId: newDesign.shareableId,
+        name: newDesign.name
+      },
+      message: 'Design saved successfully'
+    });
   } catch (error) {
+    console.error('Error creating design:', error);
     res.status(400).json({ message: 'Error creating design', error });
   }
 };
