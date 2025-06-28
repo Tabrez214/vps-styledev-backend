@@ -117,6 +117,36 @@ app.use('/uploads', express.static(uploadsDir, {
   }
 }));
 
+// Serve t-shirt images from src/tshirt-images
+const tshirtImagesDir = path.resolve(process.cwd(), 'src/tshirt-images');
+app.use('/tshirt-images', express.static(tshirtImagesDir, {
+  maxAge: '1d',
+  etag: true,
+  lastModified: true,
+  dotfiles: 'deny',
+  index: false,
+  setHeaders: (res, filePath) => {
+    console.log('Serving t-shirt image:', filePath);
+    
+    // Set proper content type for images
+    const ext = path.extname(filePath).toLowerCase();
+    switch(ext) {
+      case '.jpg':
+      case '.jpeg':
+        res.setHeader('Content-Type', 'image/jpeg');
+        break;
+      case '.png':
+        res.setHeader('Content-Type', 'image/png');
+        break;
+    }
+    
+    // Enable CORS for images
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  }
+}));
+
 // Health check endpoint
 app.get('/uploads/health', (req, res) => {
   const testFile = 'category-1749047438829.jpg';

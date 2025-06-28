@@ -1,4 +1,3 @@
-
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import ShirtStyle from '../models/design-studio/shirt-style';
@@ -7,9 +6,9 @@ import Clipart from '../models/design-studio/clipart';
 dotenv.config();
 
 const shirtStyles = [
-  { id: "gildan-cotton", name: "Gildan Cotton T-Shirt", price: 5.29, images: { front: "/uploads/Front.jpg", back: "/uploads/Back.jpg", left: "/uploads/Left.jpg", right: "/uploads/Right.jpg" } },
-  { id: "premium-cotton", name: "Premium Cotton T-Shirt", price: 8.99, images: { front: "/uploads/Front.jpg", back: "/uploads/Back.jpg", left: "/uploads/Left.jpg", right: "/uploads/Right.jpg" } },
-  { id: "vintage-wash", name: "Vintage Wash T-Shirt", price: 12.49, images: { front: "/uploads/Front.jpg", back: "/uploads/Back.jpg", left: "/uploads/Left.jpg", right: "/uploads/Right.jpg" } },
+  { id: "gildan-cotton", name: "Gildan Cotton T-Shirt", price: 5.29, images: { front: "/tshirt-images/Front.jpg", back: "/tshirt-images/Back.jpg", left: "/tshirt-images/Left.jpg", right: "/tshirt-images/Right.jpg" } },
+  { id: "premium-cotton", name: "Premium Cotton T-Shirt", price: 8.99, images: { front: "/tshirt-images/Front.jpg", back: "/tshirt-images/Back.jpg", left: "/tshirt-images/Left.jpg", right: "/tshirt-images/Right.jpg" } },
+  { id: "vintage-wash", name: "Vintage Wash T-Shirt", price: 12.49, images: { front: "/tshirt-images/Front.jpg", back: "/tshirt-images/Back.jpg", left: "/tshirt-images/Left.jpg", right: "/tshirt-images/Right.jpg" } },
 ];
 
 const colors = [
