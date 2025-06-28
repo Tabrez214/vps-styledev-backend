@@ -21,6 +21,8 @@ import contactFormRouter from './routes/contactForm';
 import profileRouter from './routes/profile/profile';
 import chooseShirtRouter from './routes/design-studio/choose-shirt';
 import clipartLibraryRouter from './routes/design-studio/clipart-library';
+import designRoutes from './routes/design-studio/designRoutes';
+import assetRoutes from './routes/design-studio/asset';
 dotenv.config();
 
 export const app = express();
@@ -172,6 +174,8 @@ app.use('/profile', profileRouter);
 // Design Studio routes - all under /design-studio prefix
 app.use('/design-studio/choose-shirt', chooseShirtRouter);
 app.use('/design-studio/clipart-library', clipartLibraryRouter);
+app.use('/designs', designRoutes);
+app.use('/assets', assetRoutes);
 
 // Start server
 const PORT = process.env.PORT || 3001;
