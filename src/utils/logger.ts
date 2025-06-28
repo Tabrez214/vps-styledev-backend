@@ -1,6 +1,11 @@
-import winston from 'winston';
+import winston, { Logform } from 'winston';
 import path from 'path';
 import config from '../config/config';
+
+// Define an interface for the log info object to ensure type safety
+interface TransformableInfo extends Logform.TransformableInfo {
+  stack?: string;
+}
 
 // Define log levels
 const levels = {
@@ -28,7 +33,7 @@ const format = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }),
   winston.format.colorize({ all: true }),
   winston.format.printf(
-    (info) => `${info.timestamp} ${info.level}: ${info.message}${
+    (info: TransformableInfo) => `${info.timestamp} ${info.level}: ${info.message}${
       info.stack ? '\n' + info.stack : ''
     }`
   ),
