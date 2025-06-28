@@ -11,7 +11,6 @@ import { asyncHandler } from '../../middleware/errorMiddleware';
 import { ValidationError, NotFoundError, AuthenticationError } from '../../middleware/errorMiddleware';
 import { requireAuth, getUserId, isUserAdmin } from '../../middleware/requireAuthAdapter';
 import config from '../../config/config';
-import { IAsset } from '../../interfaces';
 import { logger } from '../../utils/logger';
 
 // Rate limiting for file uploads
@@ -167,7 +166,7 @@ export const uploadImage = [
     .optional()
     .isString()
     .withMessage('Tags must be a string')
-    .customSanitizer(value => {
+    .customSanitizer((value: string) => {
       if (typeof value === 'string') {
         return value.split(',').map(tag => tag.trim().toLowerCase()).join(',');
       }

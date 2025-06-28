@@ -45,7 +45,7 @@ router.post(
       .withMessage('Category must be alphanumeric with spaces, hyphens, or underscores only'),
     body('tags')
       .optional()
-      .custom((tags) => {
+      .custom((tags: string | string[]) => {
         // Accept both string (comma-separated) and array formats
         if (typeof tags === 'string') {
           const tagArray = tags.split(',').map(tag => tag.trim());
@@ -201,7 +201,7 @@ router.patch(
     body('tags')
       .optional()
       .isArray()
-      .custom((tags) => {
+      .custom((tags: string[]) => {
         if (tags && tags.length > 20) {
           throw new Error('Maximum 20 tags allowed');
         }
