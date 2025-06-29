@@ -20,4 +20,4 @@ const ShirtStyleSchema: Schema = new Schema({
   colors: [{ name: String, value: String }],
 });
 
-export default mongoose.model<IShirtStyle>('ShirtStyle', ShirtStyleSchema);
+export default mongoose.models.ShirtStyle || mongoose.model<IShirtStyle>('ShirtStyle', ShirtStyleSchema);

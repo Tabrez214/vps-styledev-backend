@@ -67,7 +67,16 @@ const designElementSchema = new Schema<DesignElement>({
     // Image properties
     src: String,
     opacity: Number,
-    filter: String
+    filter: String,
+    originalWidth: Number,
+    originalHeight: Number,
+    
+    // File metadata for uploaded images
+    fileId: String,
+    originalFilename: String,
+    fileSize: Number,
+    mimeType: String,
+    uploadedAt: Date
   }
 });
 
