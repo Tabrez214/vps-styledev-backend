@@ -114,9 +114,52 @@ export const getDesign = async (req: Request, res: Response) => {
 // Create a new design
 export const createDesign = async (req: Request, res: Response) => {
   try {
-    const { design, email, name } = req.body;
+    // Log the incoming request for debugging
+    console.log('=== CREATE DESIGN REQUEST ===');
+    console.log('Request body keys:', Object.keys(req.body));
+    console.log('Request body structure:', JSON.stringify(req.body, null, 2));
+    console.log('Has design field:', !!req.body.design);
+    console.log('Has email field:', !!req.body.email);
+    console.log('Has metadata field:', !!req.body.metadata);
+    console.log('Metadata email:', req.body.metadata?.email);
+    console.log('================================');
+    
+    // Handle both old format (design, email, name) and new frontend format (direct payload)
+    let design, email, name;
+    
+    if (req.body.design && req.body.email) {
+      // Old format: { design: {...}, email: "...", name: "..." }
+      console.log('Using old format (design, email, name)');
+      design = req.body.design;
+      email = req.body.email;
+      name = req.body.name;
+    } else if (req.body.metadata && req.body.metadata.email) {
+      // New frontend format: { name: "...", elements: [...], metadata: { email: "..." }, ... }
+      console.log('Using new frontend format (direct payload)');
+      design = req.body;
+      email = req.body.metadata.email;
+      name = req.body.name;
+    } else {
+      console.log('ERROR: Neither format matched');
+      console.log('req.body.design exists:', !!req.body.design);
+      console.log('req.body.email exists:', !!req.body.email);
+      console.log('req.body.metadata exists:', !!req.body.metadata);
+      console.log('req.body.metadata.email exists:', !!req.body.metadata?.email);
+      
+      res.status(400).json({
+        success: false,
+        message: 'Design data and email are required'
+      });
+      return;
+    }
 
+    console.log('Final values after parsing:');
+    console.log('design exists:', !!design);
+    console.log('email:', email);
+    console.log('name:', name);
+    
     if (!design || !email) {
+      console.log('ERROR: Missing design or email after parsing');
       res.status(400).json({
         success: false,
         message: 'Design data and email are required'
