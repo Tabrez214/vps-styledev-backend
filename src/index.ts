@@ -23,6 +23,7 @@ import chooseShirtRouter from './routes/design-studio/choose-shirt';
 import clipartLibraryRouter from './routes/design-studio/clipart-library';
 import designRoutes from './routes/design-studio/designRoutes';
 import assetRoutes from './routes/design-studio/asset';
+import designStudioUploadRouter from './routes/design-studio/upload';
 dotenv.config();
 
 export const app = express();
@@ -62,8 +63,9 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Increase body size limits for design studio uploads
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Debug middleware to log all requests to /uploads
 app.use('/uploads', (req, res, next) => {
@@ -204,6 +206,7 @@ app.use('/profile', profileRouter);
 // Design Studio routes - all under /design-studio prefix
 app.use('/design-studio/choose-shirt', chooseShirtRouter);
 app.use('/design-studio/clipart-library', clipartLibraryRouter);
+app.use('/design-studio', designStudioUploadRouter); // Design studio file uploads
 app.use('/designs', designRoutes);
 app.use('/assets', assetRoutes);
 
