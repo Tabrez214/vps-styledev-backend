@@ -11,8 +11,10 @@ export const createDesign = async (req: Request, res: Response) => {
     // Log the incoming request for debugging
     console.log('=== CREATE DESIGN REQUEST ===');
     console.log('Request body keys:', Object.keys(req.body));
+    console.log('Full request body:', JSON.stringify(req.body, null, 2));
     console.log('Has metadata field:', !!req.body.metadata);
     console.log('Metadata email:', req.body.metadata?.email);
+    console.log('Request source:', req.headers['user-agent']);
     console.log('================================');
     
     // Handle both old format (design, email, name) and new frontend format (direct payload)
