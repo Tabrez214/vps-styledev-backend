@@ -3,6 +3,7 @@ import Design from '../../models/design-studio/design';
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
 import { calculateDesignDimensions } from '../../utils/design';
+import { sendDesignSuccessEmail } from '../../lib/emailService';
 
 // Get a design by its ID or shareableId
 export const getDesign = async (req: Request, res: Response) => {
@@ -263,10 +264,36 @@ export const createDesign = async (req: Request, res: Response) => {
 
     await newDesign.save();
 
-    const privateLink = `${process.env.FRONTEND_URL}/design/${shareableId}?token=${accessToken}`;
+    const privateLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/design-studio/${shareableId}`;
     const publicLink = newDesign.isPublic
-      ? `${process.env.FRONTEND_URL}/share/${shareableId}`
+      ? `${process.env.FRONTEND_URL || 'http://localhost:3000'}/share/${shareableId}`
       : null;
+
+    // Send congratulatory email asynchronously
+    const designData = {
+      designName: newDesign.name,
+      designId: shareableId,
+      designLink: privateLink,
+      tshirtStyle: design.tshirt.style,
+      tshirtColor: design.tshirt.color,
+      elementCount: transformedElements.length,
+      createdDate: new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    };
+
+    // Send email without blocking the response
+    sendDesignSuccessEmail(email, designData)
+      .then(() => {
+        console.log(`Design success email sent to ${email} for design ${shareableId}`);
+      })
+      .catch((emailError) => {
+        console.error(`Failed to send design success email to ${email}:`, emailError);
+      });
 
     res.status(201).json({
       success: true,
@@ -274,7 +301,7 @@ export const createDesign = async (req: Request, res: Response) => {
       shareableLink: privateLink,
       publicLink,
       data: newDesign,
-      message: 'Design saved successfully'
+      message: 'Design saved successfully! A confirmation email has been sent.'
     });
   } catch (error) {
     console.error('Error creating design:', error);
@@ -624,5 +651,68 @@ export const validateDesign = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error validating design:', error);
     res.status(500).json({ success: false, message: 'Error validating design', error });
+  }
+};
+
+// Send design success email manually
+export const sendDesignEmailManually = async (req: Request, res: Response) => {
+  try {
+    const { designId, email } = req.body;
+
+    if (!designId || !email) {
+      res.status(400).json({
+        success: false,
+        message: 'Design ID and email are required'
+      });
+      return;
+    }
+
+    const design = await Design.findOne({ shareableId: designId });
+
+    if (!design) {
+      res.status(404).json({
+        success: false,
+        message: 'Design not found'
+      });
+      return;
+    }
+
+    const designLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/design-studio/${designId}`;
+    
+    const designData = {
+      designName: design.name,
+      designId: designId,
+      designLink: designLink,
+      tshirtStyle: design.tshirt.style,
+      tshirtColor: design.tshirt.color,
+      elementCount: design.elements.length,
+      createdDate: design.createdAt.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    };
+
+    const success = await sendDesignSuccessEmail(email, designData);
+    
+    if (success) {
+      res.json({
+        success: true,
+        message: 'Design success email sent successfully!'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send email'
+      });
+    }
+  } catch (error) {
+    console.error('Error sending design email manually:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error sending email'
+    });
   }
 };

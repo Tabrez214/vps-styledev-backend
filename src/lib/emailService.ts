@@ -1,5 +1,4 @@
 import nodemailer from 'nodemailer';
-
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -33,15 +32,10 @@ export const sendOTPEmail = async (email: string, otp: string): Promise<boolean>
   }  
 }; 
 
-// Add this function to your existing emailService.ts file
-
 export const sendPasswordResetEmail = async (email: string, otp: string): Promise<boolean> => {
   try {
-    // Replace this with your actual email service implementation
-    // This is a template - adjust according to your email service (NodeMailer, SendGrid, etc.)
-    
-    const mailOptions = {
-      from: process.env.EMAIL_FROM || 'noreply@yourapp.com',
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
       to: email,
       subject: 'Password Reset Verification Code',
       html: `
@@ -74,27 +68,89 @@ export const sendPasswordResetEmail = async (email: string, otp: string): Promis
         
         If you didn't request a password reset, please ignore this email or contact support if you have concerns.
       `
-    };
-
-    // Example with NodeMailer (adjust based on your email service)
-    // const transporter = nodemailer.createTransporter({...});
-    // await transporter.sendMail(mailOptions);
-
-    // Example with SendGrid
-    // const msg = {
-    //   to: email,
-    //   from: process.env.EMAIL_FROM,
-    //   subject: 'Password Reset Verification Code',
-    //   html: mailOptions.html,
-    //   text: mailOptions.text
-    // };
-    // await sgMail.send(msg);
+    });
 
     console.log('Password reset email sent successfully to:', email);
     return true;
 
   } catch (error) {
     console.error('Error sending password reset email:', error);
+    return false;
+  }
+};
+
+// Design Success Email Service
+export const sendDesignSuccessEmail = async (
+  email: string, 
+  designData: {
+    designName: string;
+    designId: string;
+    designLink: string;
+    tshirtStyle: string;
+    tshirtColor: string;
+    elementCount: number;
+    createdDate: string;
+  }
+): Promise<boolean> => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    
+    // Read the HTML template
+    const templatePath = path.join(process.cwd(), 'src', 'templates', 'emails', 'design-success.html');
+    let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
+    
+    // Replace placeholders with actual data
+    htmlTemplate = htmlTemplate
+      .replace(/{{designName}}/g, designData.designName)
+      .replace(/{{designId}}/g, designData.designId)
+      .replace(/{{designLink}}/g, designData.designLink)
+      .replace(/{{tshirtStyle}}/g, designData.tshirtStyle)
+      .replace(/{{tshirtColor}}/g, designData.tshirtColor)
+      .replace(/{{elementCount}}/g, designData.elementCount.toString())
+      .replace(/{{createdDate}}/g, designData.createdDate);
+
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Your Design is Ready! - Design Studio',
+      html: htmlTemplate,
+      text: `
+        Congratulations! Your Design is Ready!
+        
+        Hi there!
+        
+        You've successfully created a custom t-shirt design. Here are the details:
+        
+        Design Name: ${designData.designName}
+        Design ID: ${designData.designId}
+        T-Shirt Style: ${designData.tshirtStyle}
+        T-Shirt Color: ${designData.tshirtColor}
+        Elements: ${designData.elementCount} design elements
+        Created: ${designData.createdDate}
+        
+        View your design: ${designData.designLink}
+        
+        What you can do next:
+        • Share your design with friends and family
+        • Edit your design anytime using the link above
+        • Order your custom t-shirt
+        
+        Pro Tip: Bookmark the design link for easy access later!
+        
+        If you have any questions or need help with your design, feel free to reach out to our support team.
+        
+        Happy designing!
+        
+        - Design Studio Team
+      `
+    });
+
+    console.log('Design success email sent successfully to:', email);
+    return true;
+
+  } catch (error) {
+    console.error('Error sending design success email:', error);
     return false;
   }
 };
