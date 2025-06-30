@@ -106,6 +106,11 @@ export const sendDesignSuccessEmail = async (
   }
 ): Promise<boolean> => {
   try {
+    console.log('=== DESIGN EMAIL DEBUG ===');
+    console.log('EMAIL_USER configured:', !!process.env.EMAIL_USER);
+    console.log('EMAIL_PASSWORD configured:', !!process.env.EMAIL_PASSWORD);
+    console.log('Transporter available:', !!transporter);
+    
     if (!transporter) {
       console.error('Email not configured: EMAIL_USER and EMAIL_PASSWORD environment variables are required');
       console.error('Please set EMAIL_USER and EMAIL_PASSWORD in your .env file');
@@ -129,6 +134,10 @@ export const sendDesignSuccessEmail = async (
       .replace(/{{elementCount}}/g, designData.elementCount.toString())
       .replace(/{{createdDate}}/g, designData.createdDate);
 
+    console.log('Attempting to send email to:', email);
+    console.log('Email subject: Your Design is Ready! - Design Studio');
+    console.log('Template path used:', templatePath);
+    
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: email,
@@ -165,11 +174,17 @@ export const sendDesignSuccessEmail = async (
       `
     });
 
-    console.log('Design success email sent successfully to:', email);
+    console.log('SUCCESS: Design success email sent successfully to:', email);
     return true;
 
   } catch (error) {
-    console.error('Error sending design success email:', error);
+    if (error instanceof Error) {
+      console.error('ERROR: Failed to send design success email:', error);
+      console.error('Error details:', error.message);
+      console.error('Error stack:', error.stack);
+    } else {
+      console.error('ERROR: Failed to send design success email:', error);
+    }
     return false;
   }
 };

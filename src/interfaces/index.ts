@@ -54,12 +54,28 @@ export interface ImageProperties {
   src: string;
   opacity?: number;
   filter?: string;
+  originalWidth?: number;
+  originalHeight?: number;
+  // File metadata for uploaded images
+  fileId?: string;
+  originalFilename?: string;
+  fileSize?: number;
+  mimeType?: string;
+  uploadedAt?: Date;
 }
 
 export interface ClipArtProperties {
   src: string;
   opacity?: number;
   filter?: string;
+  originalWidth?: number;
+  originalHeight?: number;
+  // File metadata for uploaded images
+  fileId?: string;
+  originalFilename?: string;
+  fileSize?: number;
+  mimeType?: string;
+  uploadedAt?: Date;
 }
 
 export type ElementProperties = TextProperties | ImageProperties | ClipArtProperties;
