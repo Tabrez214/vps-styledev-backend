@@ -2,19 +2,27 @@ import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 dotenv.config();
 
-console.log('EMAIL_USER:', process.env.EMAIL_USER);
-console.log('EMAIL_PASSWORD:', process.env.EMAIL_PASSWORD);
+console.log('EMAIL_USER:', process.env.EMAIL_USER ? 'SET' : 'NOT SET');
+console.log('EMAIL_PASSWORD:', process.env.EMAIL_PASSWORD ? 'SET' : 'NOT SET');
 
-const transporter = nodemailer.createTransport({
+// Check if email configuration is available
+const emailConfigured = process.env.EMAIL_USER && process.env.EMAIL_PASSWORD;
+
+const transporter = emailConfigured ? nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD,
   },
-});
+}) : null;
 
 export const sendOTPEmail = async (email: string, otp: string): Promise<boolean> => {
   try {
+    if (!transporter) {
+      console.error('Email not configured: EMAIL_USER and EMAIL_PASSWORD environment variables are required');
+      return false;
+    }
+    
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: email,
@@ -34,6 +42,11 @@ export const sendOTPEmail = async (email: string, otp: string): Promise<boolean>
 
 export const sendPasswordResetEmail = async (email: string, otp: string): Promise<boolean> => {
   try {
+    if (!transporter) {
+      console.error('Email not configured: EMAIL_USER and EMAIL_PASSWORD environment variables are required');
+      return false;
+    }
+    
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: email,
@@ -93,6 +106,12 @@ export const sendDesignSuccessEmail = async (
   }
 ): Promise<boolean> => {
   try {
+    if (!transporter) {
+      console.error('Email not configured: EMAIL_USER and EMAIL_PASSWORD environment variables are required');
+      console.error('Please set EMAIL_USER and EMAIL_PASSWORD in your .env file');
+      return false;
+    }
+    
     const fs = require('fs');
     const path = require('path');
     
