@@ -5,7 +5,8 @@ import {
   updateDesign,
   getDesignForManufacturer,
   getDesignFiles,
-  validateDesign
+  validateDesign,
+  sendDesignEmailManually
 } from '../../controllers/design-studio/designController';
 
 const router = Router();
@@ -19,5 +20,8 @@ router.put('/:id', updateDesign);                  // PUT /api/designs/:id - Upd
 router.get('/:id/manufacturer', getDesignForManufacturer);  // GET /api/designs/:id/manufacturer - Manufacturing details
 router.get('/:id/files', getDesignFiles);                  // GET /api/designs/:id/files - All design files
 router.post('/:id/validate', validateDesign);              // POST /api/designs/:id/validate - Validate design
+
+// Email functionality
+router.post('/send-email', sendDesignEmailManually);       // POST /api/designs/send-email - Send design email manually
 
 export default router;
