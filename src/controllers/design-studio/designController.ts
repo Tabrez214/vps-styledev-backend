@@ -5,122 +5,12 @@ import jwt from 'jsonwebtoken';
 import { calculateDesignDimensions } from '../../utils/design';
 import { sendDesignSuccessEmail } from '../../lib/emailService';
 
-// Get a design by its ID or shareableId
-export const getDesign = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    const { token } = req.query;
-    
-    // Try to find by shareableId first, then by _id
-    let design = await Design.findOne({ shareableId: id });
-    if (!design) {
-      design = await Design.findById(id);
-    }
-
-    if (!design) {
-      res.status(404).json({ success: false, message: 'Design not found' });
-      return;
-    }
-
-    // Check access permissions
-    if (!design.isPublic) {
-      if (!token) {
-        res.status(401).json({ success: false, message: 'Access token required for private design' });
-        return;
-      }
-
-      try {
-        jwt.verify(token as string, process.env.JWT_SECRET as string);
-      } catch (jwtError) {
-        res.status(401).json({ success: false, message: 'Invalid or expired access token' });
-        return;
-      }
-    }
-
-    // Transform backend elements to frontend format and resolve file URLs
-    const frontendElements = design.elements.map((element: any) => {
-      const baseElement = {
-        id: element.id,
-        type: element.type,
-        x: element.position.x,
-        y: element.position.y,
-        width: element.size.width,
-        height: element.size.height,
-        rotation: element.rotation,
-        layer: element.layer,
-        view: element.view
-      };
-
-      if (element.type === 'text') {
-        return {
-          ...baseElement,
-          text: element.properties?.text || '',
-          fontFamily: element.properties?.fontFamily || 'Arial',
-          fontSize: element.properties?.fontSize || 16,
-          color: element.properties?.fontColor || '#000000',
-          fontWeight: element.properties?.fontWeight || 'normal',
-          fontStyle: element.properties?.fontStyle || 'normal',
-          textAlign: element.properties?.textAlign || 'left',
-          lineHeight: element.properties?.lineHeight || 1.2,
-          letterSpacing: element.properties?.letterSpacing || 0,
-          textPath: element.properties?.textPath
-        };
-      } else if (element.type === 'image' || element.type === 'clipart') {
-        const baseUrl = process.env.NODE_ENV === 'production' 
-          ? process.env.BASE_URL 
-          : `http://localhost:${process.env.PORT || 3001}`;
-        
-        let resolvedSrc = element.properties?.src || '';
-        
-        // If src is a relative path, make it absolute
-        if (resolvedSrc && !resolvedSrc.startsWith('http') && !resolvedSrc.startsWith('data:')) {
-          resolvedSrc = `${baseUrl}${resolvedSrc}`;
-        }
-
-        return {
-          ...baseElement,
-          src: resolvedSrc,
-          opacity: element.properties?.opacity || 1,
-          filter: element.properties?.filter,
-          // Include file metadata for reference
-          fileInfo: element.properties?.fileId ? {
-            fileId: element.properties.fileId,
-            originalFilename: element.properties.originalFilename,
-            fileSize: element.properties.fileSize,
-            mimeType: element.properties.mimeType,
-            uploadedAt: element.properties.uploadedAt
-          } : null
-        };
-      }
-
-      return baseElement;
-    });
-
-    const responseData = {
-      ...design.toObject(),
-      elements: frontendElements
-    };
-
-    res.json({
-      success: true,
-      data: responseData,
-      message: 'Design retrieved successfully'
-    });
-  } catch (error) {
-    console.error('Error fetching design:', error);
-    res.status(500).json({ success: false, message: 'Error fetching design', error });
-  }
-};
-
 // Create a new design
 export const createDesign = async (req: Request, res: Response) => {
   try {
     // Log the incoming request for debugging
     console.log('=== CREATE DESIGN REQUEST ===');
     console.log('Request body keys:', Object.keys(req.body));
-    console.log('Request body structure:', JSON.stringify(req.body, null, 2));
-    console.log('Has design field:', !!req.body.design);
-    console.log('Has email field:', !!req.body.email);
     console.log('Has metadata field:', !!req.body.metadata);
     console.log('Metadata email:', req.body.metadata?.email);
     console.log('================================');
@@ -287,12 +177,20 @@ export const createDesign = async (req: Request, res: Response) => {
     };
 
     // Send email without blocking the response
+    console.log(`ATTEMPTING to send design success email to: ${email}`);
+    console.log(`Email data:`, designData);
+    
     sendDesignSuccessEmail(email, designData)
-      .then(() => {
-        console.log(`Design success email sent to ${email} for design ${shareableId}`);
+      .then((success) => {
+        if (success) {
+          console.log(`SUCCESS: Design success email sent to ${email} for design ${shareableId}`);
+        } else {
+          console.log(`FAILED: Design success email failed to send to ${email} for design ${shareableId}`);
+        }
       })
       .catch((emailError) => {
-        console.error(`Failed to send design success email to ${email}:`, emailError);
+        console.error(`ERROR: Failed to send design success email to ${email}:`, emailError);
+        console.error(`ERROR details:`, emailError.message);
       });
 
     res.status(201).json({
@@ -306,6 +204,113 @@ export const createDesign = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error creating design:', error);
     res.status(500).json({ success: false, message: 'Error creating design', error });
+  }
+};
+
+// Get a design by its ID or shareableId
+export const getDesign = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { token } = req.query;
+    
+    // Try to find by shareableId first, then by _id
+    let design = await Design.findOne({ shareableId: id });
+    if (!design) {
+      design = await Design.findById(id);
+    }
+
+    if (!design) {
+      res.status(404).json({ success: false, message: 'Design not found' });
+      return;
+    }
+
+    // Check access permissions
+    if (!design.isPublic) {
+      if (!token) {
+        res.status(401).json({ success: false, message: 'Access token required for private design' });
+        return;
+      }
+
+      try {
+        jwt.verify(token as string, process.env.JWT_SECRET as string);
+      } catch (jwtError) {
+        res.status(401).json({ success: false, message: 'Invalid or expired access token' });
+        return;
+      }
+    }
+
+    // Transform backend elements to frontend format and resolve file URLs
+    const frontendElements = design.elements.map((element: any) => {
+      const baseElement = {
+        id: element.id,
+        type: element.type,
+        x: element.position.x,
+        y: element.position.y,
+        width: element.size.width,
+        height: element.size.height,
+        rotation: element.rotation,
+        layer: element.layer,
+        view: element.view
+      };
+
+      if (element.type === 'text') {
+        return {
+          ...baseElement,
+          text: element.properties?.text || '',
+          fontFamily: element.properties?.fontFamily || 'Arial',
+          fontSize: element.properties?.fontSize || 16,
+          color: element.properties?.fontColor || '#000000',
+          fontWeight: element.properties?.fontWeight || 'normal',
+          fontStyle: element.properties?.fontStyle || 'normal',
+          textAlign: element.properties?.textAlign || 'left',
+          lineHeight: element.properties?.lineHeight || 1.2,
+          letterSpacing: element.properties?.letterSpacing || 0,
+          textPath: element.properties?.textPath
+        };
+      } else if (element.type === 'image' || element.type === 'clipart') {
+        const baseUrl = process.env.NODE_ENV === 'production' 
+          ? process.env.BASE_URL 
+          : `http://localhost:${process.env.PORT || 3001}`;
+        
+        let resolvedSrc = element.properties?.src || '';
+        
+        // If src is a relative path, make it absolute
+        if (resolvedSrc && !resolvedSrc.startsWith('http') && !resolvedSrc.startsWith('data:')) {
+          resolvedSrc = `${baseUrl}${resolvedSrc}`;
+        }
+
+        return {
+          ...baseElement,
+          src: resolvedSrc,
+          opacity: element.properties?.opacity || 1,
+          filter: element.properties?.filter,
+          // Include file metadata for reference
+          fileInfo: element.properties?.fileId ? {
+            fileId: element.properties.fileId,
+            originalFilename: element.properties.originalFilename,
+            fileSize: element.properties.fileSize,
+            mimeType: element.properties.mimeType,
+            uploadedAt: element.properties.uploadedAt
+          } : null
+        };
+      }
+
+      return baseElement;
+    });
+
+    const responseData = {
+      ...design.toObject(),
+      elements: frontendElements
+    };
+
+    res.json({
+      success: true,
+      data: responseData,
+      message: 'Design retrieved successfully'
+    });
+  } catch (error) {
+    console.error('Error fetching design:', error);
+    res.status(500).json({ success: false, message: 'Error fetching design', error });
   }
 };
 
@@ -397,264 +402,19 @@ export const updateDesign = async (req: Request, res: Response) => {
   }
 };
 
-// Get design details for manufacturer
+// Placeholder functions for other routes
 export const getDesignForManufacturer = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    
-    // Try to find by shareableId first, then by _id
-    let design = await Design.findOne({ shareableId: id });
-    if (!design) {
-      design = await Design.findById(id);
-    }
-
-    if (!design) {
-      res.status(404).json({ success: false, message: 'Design not found' });
-      return;
-    }
-
-    // Format the response for manufacturers with all necessary details
-    const manufacturerData = {
-      designId: design.shareableId,
-      designName: design.name,
-      customerInfo: {
-        email: design.metadata.email,
-        createdAt: design.createdAt,
-        updatedAt: design.updatedAt
-      },
-      tshirtDetails: {
-        style: design.tshirt.style,
-        color: design.tshirt.color
-      },
-      printingInstructions: {
-        dimensions: design.dimensions,
-        elements: design.elements.map((element: { id: any; type: string; position: any; size: { width: any; height: any; }; rotation: any; layer: any; view: any; properties: { text: any; fontFamily: any; fontSize: any; fontColor: any; fontWeight: any; fontStyle: any; letterSpacing: any; textAlign: any; lineHeight: any; src: any; opacity: any; originalWidth: any; originalHeight: any; filter: any; fileId: any; originalFilename: any; fileSize: any; mimeType: any; uploadedAt: any; }; }) => {
-          const instruction: any = {
-            elementId: element.id,
-            type: element.type,
-            position: element.position,
-            size: element.size,
-            rotation: element.rotation,
-            layer: element.layer,
-            view: element.view
-          };
-
-          if (element.type === 'text') {
-            instruction.textDetails = {
-              text: element.properties?.text || 'No text provided',
-              fontFamily: element.properties?.fontFamily || 'Arial',
-              fontSize: element.properties?.fontSize || 16,
-              fontColor: element.properties?.fontColor || '#000000',
-              fontWeight: element.properties?.fontWeight || 'normal',
-              fontStyle: element.properties?.fontStyle || 'normal',
-              letterSpacing: element.properties?.letterSpacing || 0,
-              textAlign: element.properties?.textAlign || 'left',
-              lineHeight: element.properties?.lineHeight || 1.2
-            };
-          } else if (element.type === 'image' || element.type === 'clipart') {
-            instruction.imageDetails = {
-              sourceUrl: element.properties?.src || 'No source provided',
-              opacity: element.properties?.opacity || 1,
-              originalDimensions: {
-                width: element.properties?.originalWidth || element.size.width,
-                height: element.properties?.originalHeight || element.size.height
-              },
-              filter: element.properties?.filter || null,
-              fileMetadata: element.properties?.fileId ? {
-                fileId: element.properties.fileId,
-                originalFilename: element.properties.originalFilename,
-                fileSize: element.properties.fileSize,
-                mimeType: element.properties.mimeType,
-                uploadedAt: element.properties.uploadedAt
-              } : null
-            };
-          }
-
-          return instruction;
-        })
-      },
-      previewImages: design.previewImages || {},
-      printableAreas: {
-        front: { x: 0, y: 0, width: 12, height: 16 },
-        back: { x: 0, y: 0, width: 12, height: 16 },
-        left: { x: 0, y: 0, width: 4, height: 8 },
-        right: { x: 0, y: 0, width: 4, height: 8 }
-      },
-      notes: [
-        'All dimensions are in pixels for positioning, convert to inches using DPI',
-        'Text elements should be printed exactly as specified with font properties',
-        'Image elements should maintain aspect ratio and opacity',
-        'Layer order determines print sequence (higher layer = on top)',
-        'Rotation is in degrees (0-360)',
-        'Contact customer via email for any clarifications'
-      ]
-    };
-
-    res.json({
-      success: true,
-      data: manufacturerData,
-      message: 'Design details retrieved for manufacturing'
-    });
-  } catch (error) {
-    console.error('Error fetching design for manufacturer:', error);
-    res.status(500).json({ success: false, message: 'Error fetching design for manufacturer', error });
-  }
+  res.status(501).json({ success: false, message: 'Not implemented yet' });
 };
 
-// Get all file URLs for a design (for manufacturers)
 export const getDesignFiles = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    
-    // Try to find by shareableId first, then by _id
-    let design = await Design.findOne({ shareableId: id });
-    if (!design) {
-      design = await Design.findById(id);
-    }
-
-    if (!design) {
-      res.status(404).json({ success: false, message: 'Design not found' });
-      return;
-    }
-
-    const baseUrl = process.env.NODE_ENV === 'production' 
-      ? process.env.BASE_URL 
-      : `http://localhost:${process.env.PORT || 3001}`;
-
-    // Extract all file references from design elements
-    const files = design.elements
-      .filter((element: { type: string; }) => element.type === 'image' || element.type === 'clipart')
-      .map((element: { properties: { src: string; fileId: any; originalFilename: any; fileSize: any; mimeType: any; uploadedAt: any; opacity: any; }; id: any; type: any; view: any; position: any; size: any; }) => {
-        const src = element.properties?.src || '';
-        let resolvedUrl = src;
-        
-        // Make relative URLs absolute
-        if (src && !src.startsWith('http') && !src.startsWith('data:')) {
-          resolvedUrl = `${baseUrl}${src}`;
-        }
-
-        return {
-          elementId: element.id,
-          elementType: element.type,
-          view: element.view,
-          fileUrl: resolvedUrl,
-          originalUrl: src,
-          fileMetadata: {
-            fileId: element.properties?.fileId,
-            originalFilename: element.properties?.originalFilename,
-            fileSize: element.properties?.fileSize,
-            mimeType: element.properties?.mimeType,
-            uploadedAt: element.properties?.uploadedAt
-          },
-          position: element.position,
-          size: element.size,
-          opacity: element.properties?.opacity || 1
-        };
-      });
-
-    res.json({
-      success: true,
-      data: {
-        designId: design.shareableId,
-        designName: design.name,
-        totalFiles: files.length,
-        files: files,
-        downloadInstructions: {
-          message: 'Use the fileUrl to download each file',
-          baseUrl: baseUrl,
-          uploadDirectory: '/uploads/'
-        }
-      },
-      message: 'Design files retrieved successfully'
-    });
-  } catch (error) {
-    console.error('Error fetching design files:', error);
-    res.status(500).json({ success: false, message: 'Error fetching design files', error });
-  }
+  res.status(501).json({ success: false, message: 'Not implemented yet' });
 };
 
-// Validate design data completeness for manufacturing
 export const validateDesign = async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    
-    // Try to find by shareableId first, then by _id
-    let design = await Design.findOne({ shareableId: id });
-    if (!design) {
-      design = await Design.findById(id);
-    }
-
-    if (!design) {
-      res.status(404).json({ success: false, message: 'Design not found' });
-      return;
-    }
-
-    const validation = {
-      isValid: true,
-      errors: [] as string[],
-      warnings: [] as string[],
-      summary: {
-        totalElements: design.elements.length,
-        textElements: 0,
-        imageElements: 0,
-        missingFiles: 0,
-        incompleteTextElements: 0
-      }
-    };
-
-    // Validate each element
-    design.elements.forEach((element: { type: string; properties: { text: string; fontFamily: any; fontSize: number; src: any; }; }, index: number) => {
-      if (element.type === 'text') {
-        validation.summary.textElements++;
-        
-        if (!element.properties?.text || element.properties.text.trim() === '') {
-          validation.errors.push(`Text element #${index + 1} has no text content`);
-          validation.summary.incompleteTextElements++;
-          validation.isValid = false;
-        }
-        
-        if (!element.properties?.fontFamily) {
-          validation.warnings.push(`Text element #${index + 1} missing font family`);
-        }
-        
-        if (!element.properties?.fontSize || element.properties.fontSize <= 0) {
-          validation.warnings.push(`Text element #${index + 1} has invalid font size`);
-        }
-      } else if (element.type === 'image' || element.type === 'clipart') {
-        validation.summary.imageElements++;
-        
-        if (!element.properties?.src) {
-          validation.errors.push(`Image element #${index + 1} has no source URL`);
-          validation.summary.missingFiles++;
-          validation.isValid = false;
-        }
-      }
-    });
-
-    // Check if design has any elements
-    if (design.elements.length === 0) {
-      validation.errors.push('Design has no elements');
-      validation.isValid = false;
-    }
-
-    // Check t-shirt configuration
-    if (!design.tshirt?.style || !design.tshirt?.color) {
-      validation.errors.push('T-shirt style or color not specified');
-      validation.isValid = false;
-    }
-
-    res.json({
-      success: true,
-      data: validation,
-      message: validation.isValid ? 'Design is valid for manufacturing' : 'Design has validation errors'
-    });
-  } catch (error) {
-    console.error('Error validating design:', error);
-    res.status(500).json({ success: false, message: 'Error validating design', error });
-  }
+  res.status(501).json({ success: false, message: 'Not implemented yet' });
 };
 
-// Send design success email manually
 export const sendDesignEmailManually = async (req: Request, res: Response) => {
   try {
     const { designId, email } = req.body;
