@@ -226,20 +226,7 @@ export const getDesign = async (req: Request, res: Response) => {
       return;
     }
 
-    // Check access permissions
-    if (!design.isPublic) {
-      if (!token) {
-        res.status(401).json({ success: false, message: 'Access token required for private design' });
-        return;
-      }
-
-      try {
-        jwt.verify(token as string, process.env.JWT_SECRET as string);
-      } catch (jwtError) {
-        res.status(401).json({ success: false, message: 'Invalid or expired access token' });
-        return;
-      }
-    }
+    // Access permissions removed - allow anyone to access designs via direct link
 
     // Transform backend elements to frontend format and resolve file URLs
     const frontendElements = design.elements.map((element: any) => {

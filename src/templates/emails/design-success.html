@@ -9,149 +9,302 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f5f5f5;
+            background-color: #f8fafc;
             line-height: 1.6;
+            min-height: 100vh;
         }
         .email-container {
             max-width: 600px;
             margin: 20px auto;
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
             overflow: hidden;
+            position: relative;
         }
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #0ea5e9;
             color: white;
-            padding: 40px 30px;
+            padding: 50px 30px;
             text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 80%, rgba(255,255,255,0.08) 0%, transparent 50%);
+        }
+        .header-content {
+            position: relative;
+            z-index: 1;
         }
         .header h1 {
             margin: 0;
-            font-size: 28px;
-            font-weight: 700;
+            font-size: 32px;
+            font-weight: 800;
             letter-spacing: -0.5px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
         .header p {
-            margin: 10px 0 0 0;
-            font-size: 16px;
-            opacity: 0.9;
+            margin: 15px 0 0 0;
+            font-size: 18px;
+            opacity: 0.95;
+            font-weight: 400;
         }
         .content {
-            padding: 40px 30px;
+            padding: 50px 30px;
         }
         .success-icon {
             text-align: center;
             margin-bottom: 30px;
+            animation: bounce 2s infinite;
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
         }
         .success-icon svg {
-            width: 80px;
-            height: 80px;
+            width: 90px;
+            height: 90px;
             fill: #10b981;
+            filter: drop-shadow(0 4px 8px rgba(16, 185, 129, 0.3));
         }
-        .design-preview {
-            background: #f8fafc;
-            border: 2px dashed #e2e8f0;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            margin: 30px 0;
+        .greeting {
+            font-size: 18px;
+            color: #1f2937;
+            margin-bottom: 20px;
+        }
+        .main-text {
+            font-size: 16px;
+            color: #4b5563;
+            margin-bottom: 30px;
+            line-height: 1.7;
         }
         .design-info {
-            background: #f8fafc;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px 0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
         .design-info h3 {
-            margin: 0 0 15px 0;
-            color: #1f2937;
-            font-size: 18px;
+            margin: 0 0 20px 0;
+            color: #0369a1;
+            font-size: 20px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         .design-detail {
             display: flex;
             justify-content: space-between;
-            margin: 8px 0;
-            padding: 8px 0;
+            margin: 12px 0;
+            padding: 12px 0;
             border-bottom: 1px solid #e5e7eb;
+            transition: background-color 0.2s ease;
+        }
+        .design-detail:hover {
+            background-color: rgba(14, 165, 233, 0.05);
+            border-radius: 6px;
+            padding: 12px;
+            margin: 12px -12px;
         }
         .design-detail:last-child {
             border-bottom: none;
         }
         .design-detail strong {
             color: #374151;
+            font-weight: 600;
+        }
+        .design-detail span:last-child {
+            color: #0ea5e9;
+            font-weight: 500;
         }
         .cta-button {
             display: inline-block;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #0ea5e9;
             color: white;
             text-decoration: none;
-            padding: 15px 30px;
-            border-radius: 8px;
-            font-weight: 600;
+            padding: 18px 35px;
+            border-radius: 12px;
+            font-weight: 700;
             font-size: 16px;
             text-align: center;
-            margin: 20px 0;
-            transition: transform 0.2s ease;
+            margin: 30px 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         .cta-button:hover {
-            transform: translateY(-2px);
+            background: #0284c7;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(14, 165, 233, 0.4);
         }
         .button-container {
             text-align: center;
-            margin: 30px 0;
+            margin: 40px 0;
         }
         .features {
-            margin: 30px 0;
+            margin: 40px 0;
+        }
+        .features h3 {
+            color: #1f2937;
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 25px;
         }
         .feature {
             display: flex;
-            align-items: center;
-            margin: 15px 0;
-            padding: 15px;
-            background: #f8fafc;
-            border-radius: 8px;
+            align-items: flex-start;
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            border-left: 4px solid #0ea5e9;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .feature:hover {
+            transform: translateX(5px);
+            box-shadow: 0 8px 25px rgba(14, 165, 233, 0.15);
         }
         .feature-icon {
-            width: 24px;
-            height: 24px;
-            margin-right: 15px;
-            fill: #667eea;
+            width: 28px;
+            height: 28px;
+            margin-right: 18px;
+            fill: #0ea5e9;
+            flex-shrink: 0;
+            margin-top: 2px;
         }
-        .footer {
-            background: #f8fafc;
-            padding: 30px;
-            text-align: center;
-            border-top: 1px solid #e5e7eb;
+        .feature-content {
+            flex: 1;
         }
-        .footer p {
-            margin: 5px 0;
+        .feature-title {
+            font-weight: 700;
+            color: #1f2937;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+        .feature-description {
             color: #6b7280;
             font-size: 14px;
         }
-        .social-links {
-            margin: 20px 0;
+        .pro-tip {
+            background: #fef9c3;
+            border: 2px solid #eab308;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            margin: 30px 0;
+            position: relative;
         }
-        .social-links a {
-            display: inline-block;
-            margin: 0 10px;
+        .pro-tip::before {
+            content: '💡';
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 5px 10px;
+            border-radius: 50%;
+            font-size: 20px;
+        }
+        .pro-tip p {
+            margin: 0;
+            font-weight: 600;
+            color: #92400e;
+        }
+        .footer {
+            background: #f1f5f9;
+            padding: 40px 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        .footer-brand {
+            font-size: 20px;
+            font-weight: 800;
+            color: #0369a1;
+            margin-bottom: 10px;
+        }
+        .footer-text {
             color: #6b7280;
+            font-size: 14px;
+            margin: 8px 0;
+        }
+        .social-links {
+            margin: 25px 0;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        .social-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 45px;
+            height: 45px;
+            background: #0ea5e9;
+            color: white;
             text-decoration: none;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
+        }
+        .social-link:hover {
+            background: #0284c7;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
+        }
+        .social-link svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+        .disclaimer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 12px;
+            color: #9ca3af;
+            line-height: 1.5;
         }
         @media (max-width: 600px) {
             .email-container {
                 margin: 10px;
-                border-radius: 8px;
+                border-radius: 12px;
             }
             .header, .content, .footer {
-                padding: 20px;
+                padding: 25px 20px;
             }
             .header h1 {
-                font-size: 24px;
+                font-size: 26px;
+            }
+            .header p {
+                font-size: 16px;
             }
             .design-detail {
                 flex-direction: column;
-                gap: 5px;
+                gap: 8px;
+            }
+            .feature {
+                flex-direction: column;
+                text-align: center;
+            }
+            .feature-icon {
+                margin: 0 auto 15px auto;
+            }
+            .social-links {
+                gap: 15px;
             }
         }
     </style>
@@ -160,8 +313,10 @@
     <div class="email-container">
         <!-- Header -->
         <div class="header">
-            <h1>🎉 Design Created Successfully!</h1>
-            <p>Your custom t-shirt design is ready to view and share</p>
+            <div class="header-content">
+                <h1>🎉 Design Created Successfully!</h1>
+                <p>Your custom t-shirt design is ready to view and share</p>
+            </div>
         </div>
 
         <!-- Content -->
@@ -173,9 +328,9 @@
                 </svg>
             </div>
 
-            <p>Hi there! 👋</p>
+            <p class="greeting">Hi there! 👋</p>
             
-            <p>Congratulations! You've successfully created a custom t-shirt design. Your creativity has been saved and is ready to be shared with the world.</p>
+            <p class="main-text">Congratulations! You've successfully created a custom t-shirt design. Your creativity has been saved and is ready to be shared with the world.</p>
 
             <!-- Design Info -->
             <div class="design-info">
@@ -221,9 +376,9 @@
                     <svg class="feature-icon" viewBox="0 0 24 24">
                         <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/>
                     </svg>
-                    <div>
-                        <strong>Share Your Design</strong><br>
-                        <span style="color: #6b7280;">Send the link to friends and family</span>
+                    <div class="feature-content">
+                        <div class="feature-title">Share Your Design</div>
+                        <div class="feature-description">Send the link to friends and family to show off your creativity</div>
                     </div>
                 </div>
 
@@ -231,47 +386,59 @@
                     <svg class="feature-icon" viewBox="0 0 24 24">
                         <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                     </svg>
-                    <div>
-                        <strong>Edit Your Design</strong><br>
-                        <span style="color: #6b7280;">Make changes anytime using the link above</span>
+                    <div class="feature-content">
+                        <div class="feature-title">Edit Your Design</div>
+                        <div class="feature-description">Make changes anytime using the link above - your design is always editable</div>
                     </div>
                 </div>
 
                 <div class="feature">
                     <svg class="feature-icon" viewBox="0 0 24 24">
-                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                        <path d="M7 4V2C7 1.45 7.45 1 8 1s1 .45 1 1v2h6V2c0-.55.45-1 1-1s1 .45 1 1v2h2c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2h2zm12 4H5v10h14V8z"/>
                     </svg>
-                    <div>
-                        <strong>Order Your T-Shirt</strong><br>
-                        <span style="color: #6b7280;">Get your design printed on a high-quality t-shirt</span>
+                    <div class="feature-content">
+                        <div class="feature-title">Order Your T-Shirt</div>
+                        <div class="feature-description">Get your design printed on premium quality t-shirts with fast shipping</div>
                     </div>
                 </div>
             </div>
 
-            <div class="design-preview">
-                <p><strong>💡 Pro Tip:</strong> Bookmark the design link for easy access later!</p>
+            <div class="pro-tip">
+                <p><strong>Pro Tip:</strong> Bookmark the design link for easy access later!</p>
             </div>
 
             <p>If you have any questions or need help with your design, feel free to reach out to our support team.</p>
 
-            <p>Happy designing! 🎨</p>
+            <p><strong>Happy designing! 🎨</strong></p>
         </div>
 
         <!-- Footer -->
         <div class="footer">
-            <p><strong>Design Studio Team</strong></p>
-            <p>Thank you for using our design platform!</p>
+            <div class="footer-brand">StyleDev Design Studio</div>
+            <p class="footer-text">Thank you for using our design platform!</p>
             
             <div class="social-links">
-                <a href="#">Facebook</a>
-                <a href="#">Twitter</a>
-                <a href="#">Instagram</a>
+                <a href="https://x.com/styledevoffici1" class="social-link" title="Follow us on Twitter">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                </a>
+                <a href="https://www.facebook.com/styledevofficial/" class="social-link" title="Like us on Facebook">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                </a>
+                <a href="https://www.instagram.com/styledev_offical/" class="social-link" title="Follow us on Instagram">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                    </svg>
+                </a>
             </div>
             
-            <p style="margin-top: 20px;">
+            <div class="disclaimer">
                 This email was sent because you created a design on our platform.<br>
                 If you have any questions, please contact our support team.
-            </p>
+            </div>
         </div>
     </div>
 </body>

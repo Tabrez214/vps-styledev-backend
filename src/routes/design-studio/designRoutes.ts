@@ -12,16 +12,16 @@ import {
 const router = Router();
 
 // Main design CRUD operations
-router.post('/', createDesign);                    // POST /api/designs - Create a new design
-router.get('/:id', getDesign);                     // GET /api/designs/:id - Fetch a design
-router.put('/:id', updateDesign);                  // PUT /api/designs/:id - Update an existing design
+router.post('/', createDesign);                    // POST /designs - Create a new design
+router.get('/:id', getDesign);                     // GET /designs/:id - Fetch a design
+router.put('/:id', updateDesign);                  // PUT /designs/:id - Update an existing design
 
 // Manufacturer-specific endpoints
-router.get('/:id/manufacturer', getDesignForManufacturer);  // GET /api/designs/:id/manufacturer - Manufacturing details
-router.get('/:id/files', getDesignFiles);                  // GET /api/designs/:id/files - All design files
-router.post('/:id/validate', validateDesign);              // POST /api/designs/:id/validate - Validate design
+router.get('/:id/manufacturer', getDesignForManufacturer);  // GET /designs/:id/manufacturer - Manufacturing details
+router.get('/:id/files', getDesignFiles);                  // GET /designs/:id/files - All design files
+router.post('/:id/validate', validateDesign);              // POST /designs/:id/validate - Validate design
 
 // Email functionality
-router.post('/send-email', sendDesignEmailManually);       // POST /api/designs/send-email - Send design email manually
+router.post('/send-email', sendDesignEmailManually);       // POST /designs/send-email - Send design email manually
 
 export default router;
