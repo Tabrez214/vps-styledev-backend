@@ -118,7 +118,7 @@ export const getUserOrders = async (req: RequestWithUser, res: Response) => {
       status: formatOrderStatus(order.status),
       date: order.createdAt.toISOString().split('T')[0],
       totalAmount: order.totalAmount,
-      items: order.items.map(item => ({
+      items: order.items.map((item: any) => ({
         productId: item.productId,
         quantity: item.quantity,
         price: item.price
