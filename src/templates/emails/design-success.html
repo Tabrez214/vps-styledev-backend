@@ -4,442 +4,503 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Design Created Successfully!</title>
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
     <style>
+        /* Reset styles for email clients */
+        body, table, td, p, a, li, blockquote {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+        table, td {
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+        }
+        img {
+            -ms-interpolation-mode: bicubic;
+            border: 0;
+            outline: none;
+            text-decoration: none;
+        }
+        
+        /* Main styles */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f8fafc;
-            line-height: 1.6;
+            font-family: Arial, Helvetica, sans-serif !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background-color: #f8fafc !important;
+            line-height: 1.6 !important;
             min-height: 100vh;
         }
+        
         .email-container {
             max-width: 600px;
             margin: 20px auto;
-            background: white;
+            background: #ffffff;
             border-radius: 16px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
             overflow: hidden;
-            position: relative;
+            border: 1px solid #e2e8f0;
         }
+        
         .header {
-            background: #0ea5e9;
-            color: white;
+            background-color: #0ea5e9 !important;
+            color: #ffffff !important;
             padding: 50px 30px;
             text-align: center;
-            position: relative;
-            overflow: hidden;
         }
-        .header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.1) 0%, transparent 50%),
-                        radial-gradient(circle at 70% 80%, rgba(255,255,255,0.08) 0%, transparent 50%);
-        }
-        .header-content {
-            position: relative;
-            z-index: 1;
-        }
+        
         .header h1 {
-            margin: 0;
-            font-size: 32px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            margin: 0 !important;
+            font-size: 32px !important;
+            font-weight: bold !important;
+            color: #ffffff !important;
         }
+        
         .header p {
-            margin: 15px 0 0 0;
-            font-size: 18px;
-            opacity: 0.95;
-            font-weight: 400;
+            margin: 15px 0 0 0 !important;
+            font-size: 18px !important;
+            color: #ffffff !important;
         }
+        
         .content {
             padding: 50px 30px;
         }
+        
         .success-icon {
             text-align: center;
             margin-bottom: 30px;
-            animation: bounce 2s infinite;
         }
-        @keyframes bounce {
-            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-            40% { transform: translateY(-10px); }
-            60% { transform: translateY(-5px); }
-        }
-        .success-icon svg {
+        
+        .success-icon-img {
             width: 90px;
             height: 90px;
-            fill: #10b981;
-            filter: drop-shadow(0 4px 8px rgba(16, 185, 129, 0.3));
+            background-color: #10b981;
+            border-radius: 50%;
+            display: inline-block;
+            color: #ffffff;
+            font-size: 48px;
+            line-height: 90px;
+            text-align: center;
         }
+        
         .greeting {
-            font-size: 18px;
-            color: #1f2937;
-            margin-bottom: 20px;
+            font-size: 18px !important;
+            color: #1f2937 !important;
+            margin-bottom: 20px !important;
         }
+        
         .main-text {
-            font-size: 16px;
-            color: #4b5563;
-            margin-bottom: 30px;
-            line-height: 1.7;
+            font-size: 16px !important;
+            color: #4b5563 !important;
+            margin-bottom: 30px !important;
+            line-height: 1.7 !important;
         }
+        
         .design-info {
-            background: white;
+            background: #ffffff;
             border: 2px solid #e2e8f0;
             border-radius: 12px;
             padding: 25px;
             margin: 30px 0;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
+        
         .design-info h3 {
-            margin: 0 0 20px 0;
-            color: #0369a1;
-            font-size: 20px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            margin: 0 0 20px 0 !important;
+            color: #0369a1 !important;
+            font-size: 20px !important;
+            font-weight: bold !important;
         }
+        
         .design-detail {
-            display: flex;
-            justify-content: space-between;
-            margin: 12px 0;
-            padding: 12px 0;
             border-bottom: 1px solid #e5e7eb;
-            transition: background-color 0.2s ease;
+            padding: 12px 0;
+            margin: 0;
         }
-        .design-detail:hover {
-            background-color: rgba(14, 165, 233, 0.05);
-            border-radius: 6px;
-            padding: 12px;
-            margin: 12px -12px;
-        }
+        
         .design-detail:last-child {
             border-bottom: none;
         }
-        .design-detail strong {
-            color: #374151;
-            font-weight: 600;
+        
+        .design-detail-table {
+            width: 100%;
+            border-collapse: collapse;
         }
-        .design-detail span:last-child {
-            color: #0ea5e9;
-            font-weight: 500;
+        
+        .design-detail-label {
+            color: #374151 !important;
+            font-weight: bold !important;
+            width: 40%;
+            vertical-align: top;
+            padding: 0;
         }
+        
+        .design-detail-value {
+            color: #0ea5e9 !important;
+            font-weight: normal !important;
+            width: 60%;
+            vertical-align: top;
+            padding: 0;
+        }
+        
         .cta-button {
-            display: inline-block;
-            background: #0ea5e9;
-            color: white;
-            text-decoration: none;
-            padding: 18px 35px;
-            border-radius: 12px;
-            font-weight: 700;
-            font-size: 16px;
-            text-align: center;
-            margin: 30px 0;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
+            display: inline-block !important;
+            background-color: #0ea5e9 !important;
+            color: #ffffff !important;
+            text-decoration: none !important;
+            padding: 18px 35px !important;
+            border-radius: 12px !important;
+            font-weight: bold !important;
+            font-size: 16px !important;
+            text-align: center !important;
+            margin: 30px 0 !important;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-        .cta-button:hover {
-            background: #0284c7;
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(14, 165, 233, 0.4);
-        }
+        
         .button-container {
             text-align: center;
             margin: 40px 0;
         }
+        
         .features {
             margin: 40px 0;
         }
+        
         .features h3 {
-            color: #1f2937;
-            font-size: 22px;
-            font-weight: 700;
-            margin-bottom: 25px;
+            color: #1f2937 !important;
+            font-size: 22px !important;
+            font-weight: bold !important;
+            margin-bottom: 25px !important;
         }
+        
         .feature {
-            display: flex;
-            align-items: flex-start;
             margin: 20px 0;
             padding: 20px;
-            background: white;
+            background: #ffffff;
             border-radius: 12px;
             border-left: 4px solid #0ea5e9;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-top: 1px solid #e5e7eb;
+            border-right: 1px solid #e5e7eb;
+            border-bottom: 1px solid #e5e7eb;
         }
-        .feature:hover {
-            transform: translateX(5px);
-            box-shadow: 0 8px 25px rgba(14, 165, 233, 0.15);
+        
+        .feature-table {
+            width: 100%;
+            border-collapse: collapse;
         }
+        
+        .feature-icon-cell {
+            width: 60px;
+            vertical-align: top;
+            padding-right: 18px;
+        }
+        
         .feature-icon {
             width: 28px;
             height: 28px;
-            margin-right: 18px;
-            fill: #0ea5e9;
-            flex-shrink: 0;
-            margin-top: 2px;
-        }
-        .feature-content {
-            flex: 1;
-        }
-        .feature-title {
-            font-weight: 700;
-            color: #1f2937;
-            font-size: 16px;
-            margin-bottom: 4px;
-        }
-        .feature-description {
-            color: #6b7280;
-            font-size: 14px;
-        }
-        .pro-tip {
-            background: #fef9c3;
-            border: 2px solid #eab308;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            margin: 30px 0;
-            position: relative;
-        }
-        .pro-tip::before {
-            content: '💡';
-            position: absolute;
-            top: -15px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: white;
-            padding: 5px 10px;
+            background-color: #0ea5e9;
+            color: #ffffff;
             border-radius: 50%;
-            font-size: 20px;
-        }
-        .pro-tip p {
-            margin: 0;
-            font-weight: 600;
-            color: #92400e;
-        }
-        .footer {
-            background: #f1f5f9;
-            padding: 40px 30px;
+            display: inline-block;
             text-align: center;
-            border-top: 1px solid #e2e8f0;
-        }
-        .footer-brand {
-            font-size: 20px;
-            font-weight: 800;
-            color: #0369a1;
-            margin-bottom: 10px;
-        }
-        .footer-text {
-            color: #6b7280;
+            line-height: 28px;
             font-size: 14px;
-            margin: 8px 0;
+            font-weight: bold;
         }
+        
+        .feature-content {
+            vertical-align: top;
+        }
+        
+        .feature-title {
+            font-weight: bold !important;
+            color: #1f2937 !important;
+            font-size: 16px !important;
+            margin-bottom: 4px !important;
+        }
+        
+        .feature-description {
+            color: #6b7280 !important;
+            font-size: 14px !important;
+            margin: 0 !important;
+        }
+        
+        .pro-tip {
+            background-color: #fef9c3 !important;
+            border: 2px solid #eab308 !important;
+            border-radius: 12px !important;
+            padding: 20px !important;
+            text-align: center !important;
+            margin: 30px 0 !important;
+        }
+        
+        .pro-tip p {
+            margin: 0 !important;
+            font-weight: bold !important;
+            color: #92400e !important;
+        }
+        
+        .footer {
+            background-color: #f1f5f9 !important;
+            padding: 40px 30px !important;
+            text-align: center !important;
+            border-top: 1px solid #e2e8f0 !important;
+        }
+        
+        .footer-brand {
+            font-size: 20px !important;
+            font-weight: bold !important;
+            color: #0369a1 !important;
+            margin-bottom: 10px !important;
+        }
+        
+        .footer-text {
+            color: #6b7280 !important;
+            font-size: 14px !important;
+            margin: 8px 0 !important;
+        }
+        
         .social-links {
             margin: 25px 0;
-            display: flex;
-            justify-content: center;
-            gap: 20px;
         }
+        
         .social-link {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 45px;
-            height: 45px;
-            background: #0ea5e9;
-            color: white;
-            text-decoration: none;
-            border-radius: 12px;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(14, 165, 233, 0.3);
+            display: inline-block !important;
+            width: 45px !important;
+            height: 45px !important;
+            background-color: #0ea5e9 !important;
+            color: #ffffff !important;
+            text-decoration: none !important;
+            border-radius: 12px !important;
+            margin: 0 10px !important;
+            text-align: center !important;
+            line-height: 45px !important;
+            font-size: 18px !important;
+            font-weight: bold !important;
         }
-        .social-link:hover {
-            background: #0284c7;
-            transform: translateY(-3px);
-            box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
-        }
-        .social-link svg {
-            width: 20px;
-            height: 20px;
-            fill: currentColor;
-        }
+        
         .disclaimer {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #e5e7eb;
-            font-size: 12px;
-            color: #9ca3af;
-            line-height: 1.5;
+            margin-top: 30px !important;
+            padding-top: 20px !important;
+            border-top: 1px solid #e5e7eb !important;
+            font-size: 12px !important;
+            color: #9ca3af !important;
+            line-height: 1.5 !important;
         }
-        @media (max-width: 600px) {
+        
+        /* Mobile styles */
+        @media only screen and (max-width: 600px) {
             .email-container {
-                margin: 10px;
-                border-radius: 12px;
+                margin: 10px !important;
+                border-radius: 12px !important;
             }
             .header, .content, .footer {
-                padding: 25px 20px;
+                padding: 25px 20px !important;
             }
             .header h1 {
-                font-size: 26px;
+                font-size: 26px !important;
             }
             .header p {
-                font-size: 16px;
+                font-size: 16px !important;
             }
-            .design-detail {
-                flex-direction: column;
-                gap: 8px;
+            .design-detail-table {
+                width: 100% !important;
             }
-            .feature {
-                flex-direction: column;
-                text-align: center;
+            .design-detail-label {
+                width: 100% !important;
+                display: block !important;
+                margin-bottom: 5px !important;
             }
-            .feature-icon {
-                margin: 0 auto 15px auto;
+            .design-detail-value {
+                width: 100% !important;
+                display: block !important;
             }
-            .social-links {
-                gap: 15px;
+            .feature-table {
+                width: 100% !important;
+            }
+            .feature-icon-cell {
+                width: 100% !important;
+                text-align: center !important;
+                padding-bottom: 15px !important;
+                padding-right: 0 !important;
+            }
+            .social-link {
+                margin: 0 5px !important;
             }
         }
     </style>
 </head>
 <body>
-    <div class="email-container">
-        <!-- Header -->
-        <div class="header">
-            <div class="header-content">
-                <h1>🎉 Design Created Successfully!</h1>
-                <p>Your custom t-shirt design is ready to view and share</p>
-            </div>
-        </div>
+    <!-- Wrapper table for Outlook -->
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+        <tr>
+            <td>
+                <div class="email-container">
+                    <!-- Header -->
+                    <div class="header">
+                        <h1>🎉 Design Created Successfully!</h1>
+                        <p>Your custom t-shirt design is ready to view and share</p>
+                    </div>
 
-        <!-- Content -->
-        <div class="content">
-            <!-- Success Icon -->
-            <div class="success-icon">
-                <svg viewBox="0 0 24 24">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                </svg>
-            </div>
+                    <!-- Content -->
+                    <div class="content">
+                        <!-- Success Icon -->
+                        <div class="success-icon">
+                            <div class="success-icon-img">✓</div>
+                        </div>
 
-            <p class="greeting">Hi there! 👋</p>
-            
-            <p class="main-text">Congratulations! You've successfully created a custom t-shirt design. Your creativity has been saved and is ready to be shared with the world.</p>
+                        <p class="greeting">Hi there! 👋</p>
+                        
+                        <p class="main-text">Congratulations! You've successfully created a custom t-shirt design. Your creativity has been saved and is ready to be shared with the world.</p>
 
-            <!-- Design Info -->
-            <div class="design-info">
-                <h3>📋 Design Details</h3>
-                <div class="design-detail">
-                    <span><strong>Design Name:</strong></span>
-                    <span>{{designName}}</span>
-                </div>
-                <div class="design-detail">
-                    <span><strong>Design ID:</strong></span>
-                    <span>{{designId}}</span>
-                </div>
-                <div class="design-detail">
-                    <span><strong>T-Shirt Style:</strong></span>
-                    <span>{{tshirtStyle}}</span>
-                </div>
-                <div class="design-detail">
-                    <span><strong>T-Shirt Color:</strong></span>
-                    <span>{{tshirtColor}}</span>
-                </div>
-                <div class="design-detail">
-                    <span><strong>Elements:</strong></span>
-                    <span>{{elementCount}} design elements</span>
-                </div>
-                <div class="design-detail">
-                    <span><strong>Created:</strong></span>
-                    <span>{{createdDate}}</span>
-                </div>
-            </div>
+                        <!-- Design Info -->
+                        <div class="design-info">
+                            <h3>📋 Design Details</h3>
+                            
+                            <div class="design-detail">
+                                <table class="design-detail-table" role="presentation">
+                                    <tr>
+                                        <td class="design-detail-label">Design Name:</td>
+                                        <td class="design-detail-value">{{designName}}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            
+                            <div class="design-detail">
+                                <table class="design-detail-table" role="presentation">
+                                    <tr>
+                                        <td class="design-detail-label">Design ID:</td>
+                                        <td class="design-detail-value">{{designId}}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            
+                            <div class="design-detail">
+                                <table class="design-detail-table" role="presentation">
+                                    <tr>
+                                        <td class="design-detail-label">T-Shirt Style:</td>
+                                        <td class="design-detail-value">{{tshirtStyle}}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            
+                            <div class="design-detail">
+                                <table class="design-detail-table" role="presentation">
+                                    <tr>
+                                        <td class="design-detail-label">T-Shirt Color:</td>
+                                        <td class="design-detail-value">{{tshirtColor}}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            
+                            <div class="design-detail">
+                                <table class="design-detail-table" role="presentation">
+                                    <tr>
+                                        <td class="design-detail-label">Elements:</td>
+                                        <td class="design-detail-value">{{elementCount}} design elements</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            
+                            <div class="design-detail">
+                                <table class="design-detail-table" role="presentation">
+                                    <tr>
+                                        <td class="design-detail-label">Created:</td>
+                                        <td class="design-detail-value">{{createdDate}}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
 
-            <!-- CTA Button -->
-            <div class="button-container">
-                <a href="{{designLink}}" class="cta-button">
-                    🎨 View Your Design
-                </a>
-            </div>
+                        <!-- CTA Button -->
+                        <div class="button-container">
+                            <a href="{{designLink}}" class="cta-button">
+                                🎨 View Your Design
+                            </a>
+                        </div>
 
-            <!-- Features -->
-            <div class="features">
-                <h3>What you can do next:</h3>
-                
-                <div class="feature">
-                    <svg class="feature-icon" viewBox="0 0 24 24">
-                        <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/>
-                    </svg>
-                    <div class="feature-content">
-                        <div class="feature-title">Share Your Design</div>
-                        <div class="feature-description">Send the link to friends and family to show off your creativity</div>
+                        <!-- Features -->
+                        <div class="features">
+                            <h3>What you can do next:</h3>
+                            
+                            <div class="feature">
+                                <table class="feature-table" role="presentation">
+                                    <tr>
+                                        <td class="feature-icon-cell">
+                                            <div class="feature-icon">↗</div>
+                                        </td>
+                                        <td class="feature-content">
+                                            <div class="feature-title">Share Your Design</div>
+                                            <p class="feature-description">Send the link to friends and family to show off your creativity</p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <div class="feature">
+                                <table class="feature-table" role="presentation">
+                                    <tr>
+                                        <td class="feature-icon-cell">
+                                            <div class="feature-icon">✎</div>
+                                        </td>
+                                        <td class="feature-content">
+                                            <div class="feature-title">Edit Your Design</div>
+                                            <p class="feature-description">Make changes anytime using the link above - your design is always editable</p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <div class="feature">
+                                <table class="feature-table" role="presentation">
+                                    <tr>
+                                        <td class="feature-icon-cell">
+                                            <div class="feature-icon">🛒</div>
+                                        </td>
+                                        <td class="feature-content">
+                                            <div class="feature-title">Order Your T-Shirt</div>
+                                            <p class="feature-description">Get your design printed on premium quality t-shirts with fast shipping</p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="pro-tip">
+                            <p>💡 <strong>Pro Tip:</strong> Bookmark the design link for easy access later!</p>
+                        </div>
+
+                        <p>If you have any questions or need help with your design, feel free to reach out to our support team.</p>
+
+                        <p><strong>Happy designing! 🎨</strong></p>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="footer">
+                        <div class="footer-brand">StyleDev Design Studio</div>
+                        <p class="footer-text">Thank you for using our design platform!</p>
+                        
+                        <div class="social-links">
+                            <a href="https://x.com/styledevoffici1" class="social-link">X</a>
+                            <a href="https://www.facebook.com/styledevofficial/" class="social-link">f</a>
+                            <a href="https://www.instagram.com/styledev_offical/" class="social-link">IG</a>
+                        </div>
+                        
+                        <div class="disclaimer">
+                            This email was sent because you created a design on our platform.<br>
+                            If you have any questions, please contact our support team.
+                        </div>
                     </div>
                 </div>
-
-                <div class="feature">
-                    <svg class="feature-icon" viewBox="0 0 24 24">
-                        <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                    </svg>
-                    <div class="feature-content">
-                        <div class="feature-title">Edit Your Design</div>
-                        <div class="feature-description">Make changes anytime using the link above - your design is always editable</div>
-                    </div>
-                </div>
-
-                <div class="feature">
-                    <svg class="feature-icon" viewBox="0 0 24 24">
-                        <path d="M7 4V2C7 1.45 7.45 1 8 1s1 .45 1 1v2h6V2c0-.55.45-1 1-1s1 .45 1 1v2h2c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2h2zm12 4H5v10h14V8z"/>
-                    </svg>
-                    <div class="feature-content">
-                        <div class="feature-title">Order Your T-Shirt</div>
-                        <div class="feature-description">Get your design printed on premium quality t-shirts with fast shipping</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="pro-tip">
-                <p><strong>Pro Tip:</strong> Bookmark the design link for easy access later!</p>
-            </div>
-
-            <p>If you have any questions or need help with your design, feel free to reach out to our support team.</p>
-
-            <p><strong>Happy designing! 🎨</strong></p>
-        </div>
-
-        <!-- Footer -->
-        <div class="footer">
-            <div class="footer-brand">StyleDev Design Studio</div>
-            <p class="footer-text">Thank you for using our design platform!</p>
-            
-            <div class="social-links">
-                <a href="https://x.com/styledevoffici1" class="social-link" title="Follow us on Twitter">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                    </svg>
-                </a>
-                <a href="https://www.facebook.com/styledevofficial/" class="social-link" title="Like us on Facebook">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                    </svg>
-                </a>
-                <a href="https://www.instagram.com/styledev_offical/" class="social-link" title="Follow us on Instagram">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-                    </svg>
-                </a>
-            </div>
-            
-            <div class="disclaimer">
-                This email was sent because you created a design on our platform.<br>
-                If you have any questions, please contact our support team.
-            </div>
-        </div>
-    </div>
+            </td>
+        </tr>
+    </table>
 </body>
 </html>

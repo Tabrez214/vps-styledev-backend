@@ -74,11 +74,16 @@ const orderSchema = new mongoose.Schema(
       enum: ["pending", "completed", "failed"],
       default: "pending",
     },
+    invoice: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Invoice",
+      default: null,
+    },
   },
   {
     timestamps: true,
   }
 );
 
-const orderModel = mongoose.model("Order", orderSchema);
+const orderModel = mongoose.models.Order || mongoose.model("Order", orderSchema);
 export default orderModel;
