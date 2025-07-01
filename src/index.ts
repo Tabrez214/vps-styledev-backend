@@ -212,7 +212,7 @@ app.use('/design-studio', designStudioUploadRouter); // Design studio file uploa
 app.use('/designs', designRoutes);
 app.use('/assets', assetRoutes);
 app.use('/email', emailRouter);
-app.use('/api/invoices', invoiceRouter);
+app.use('/invoices', invoiceRouter);
 
 // Start server
 const PORT = process.env.PORT || 3001;
