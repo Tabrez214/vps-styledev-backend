@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import { Invoice, } from '../models/invoiceGenerator';
+import Order from '../models/order';
 import { z } from 'zod';
 
 const router = express.Router();
@@ -46,6 +47,9 @@ const invoiceSchema = z.object({
   companyPhone: z.string().min(1).default('+91 98765 43210'),
   companyEmail: z.string().email().default('info@styledev.com'),
   gstNumber: z.string().optional(), // Company GST number
+  // Order reference fields
+  orderId: z.string().optional(),
+  order: z.string().optional(), // MongoDB ObjectId as string
   status: z.enum(['draft', 'sent', 'paid', 'overdue', 'cancelled']).optional()
 });
 
@@ -212,6 +216,34 @@ router.post('/', async (req: Request, res: Response) => {
     const invoice = new Invoice(value);
     await invoice.save();
 
+    // If order reference is provided, update the order with the invoice reference
+    if (value.order || value.orderId) {
+      try {
+        let orderQuery: any = {};
+        
+        if (value.order) {
+          orderQuery._id = value.order;
+        } else if (value.orderId) {
+          orderQuery.order_id = value.orderId;
+        }
+
+        const updatedOrder = await Order.findOneAndUpdate(
+          orderQuery,
+          { invoice: invoice._id },
+          { new: true }
+        );
+
+        if (updatedOrder) {
+          console.log(`Invoice ${invoice.invoiceNumber} linked to order ${updatedOrder.order_id}`);
+        } else {
+          console.warn(`Order not found for linking with invoice ${invoice.invoiceNumber}`);
+        }
+      } catch (orderUpdateError) {
+        console.error('Error linking invoice to order:', orderUpdateError);
+        // Don't fail the invoice creation if order linking fails
+      }
+    }
+
     res.status(201).json({
       success: true,
       message: 'Invoice created successfully',
@@ -276,6 +308,34 @@ router.put('/:id', async (req: Request, res: Response) => {
         message: 'Invoice not found'
       });
       return;
+    }
+
+    // If order reference is being updated, handle the linking
+    if (value.order || value.orderId) {
+      try {
+        let orderQuery: any = {};
+        
+        if (value.order) {
+          orderQuery._id = value.order;
+        } else if (value.orderId) {
+          orderQuery.order_id = value.orderId;
+        }
+
+        const updatedOrder = await Order.findOneAndUpdate(
+          orderQuery,
+          { invoice: invoice._id },
+          { new: true }
+        );
+
+        if (updatedOrder) {
+          console.log(`Invoice ${invoice.invoiceNumber} linked to order ${updatedOrder.order_id}`);
+        } else {
+          console.warn(`Order not found for linking with invoice ${invoice.invoiceNumber}`);
+        }
+      } catch (orderUpdateError) {
+        console.error('Error linking invoice to order during update:', orderUpdateError);
+        // Don't fail the invoice update if order linking fails
+      }
     }
 
     res.json({
@@ -362,6 +422,167 @@ router.delete('/:id', async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Error deleting invoice',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+    return;
+  }
+});
+
+// GET /api/invoices/search-orders - Search orders for invoice creation
+router.get('/search-orders', async (req: Request, res: Response) => {
+  try {
+    const { query, page = 1, limit = 10 } = req.query;
+    
+    if (!query || typeof query !== 'string') {
+      res.status(400).json({
+        success: false,
+        message: 'Search query is required'
+      });
+      return;
+    }
+
+    const pageNum = parseInt(page as string) || 1;
+    const limitNum = parseInt(limit as string) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+    // Build search filter
+    const searchFilter: any = {
+      $or: [
+        { order_id: { $regex: query, $options: 'i' } },
+        { name: { $regex: query, $options: 'i' } }
+      ]
+    };
+
+    // Find orders without invoices or with specific order IDs
+    const orders = await Order.find(searchFilter)
+      .populate('user', 'name email')
+      .populate('address', 'fullName phoneNumber streetAddress city state country postalCode')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .select('order_id name totalAmount status createdAt user address invoice');
+
+    const totalCount = await Order.countDocuments(searchFilter);
+
+    const formattedOrders = orders.map(order => ({
+      _id: order._id,
+      orderId: order.order_id,
+      name: order.name,
+      totalAmount: order.totalAmount,
+      status: order.status,
+      date: order.createdAt,
+      hasInvoice: !!order.invoice,
+      customer: {
+        name: (order.user as any)?.name || 'Unknown',
+        email: (order.user as any)?.email || 'Unknown'
+      },
+      address: order.address ? {
+        fullName: (order.address as any).fullName,
+        phoneNumber: (order.address as any).phoneNumber,
+        streetAddress: (order.address as any).streetAddress,
+        city: (order.address as any).city,
+        state: (order.address as any).state,
+        country: (order.address as any).country,
+        postalCode: (order.address as any).postalCode
+      } : null
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        orders: formattedOrders,
+        pagination: {
+          currentPage: pageNum,
+          totalPages: Math.ceil(totalCount / limitNum),
+          totalCount,
+          hasNext: pageNum < Math.ceil(totalCount / limitNum),
+          hasPrev: pageNum > 1
+        }
+      }
+    });
+    return;
+  } catch (error) {
+    console.error('Error searching orders:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error searching orders',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+    return;
+  }
+});
+
+// GET /api/invoices/order/:orderId - Get order details for invoice creation
+router.get('/order/:orderId', async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+    
+    const order = await Order.findOne({
+      $or: [
+        { _id: orderId },
+        { order_id: orderId }
+      ]
+    })
+      .populate('user', 'name email')
+      .populate('address', 'fullName phoneNumber streetAddress city state country postalCode')
+      .populate('items.productId', 'name')
+      .populate('invoice', 'invoiceNumber status');
+
+    if (!order) {
+      res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+      return;
+    }
+
+    // Format order data for invoice creation
+    const orderData = {
+      _id: order._id,
+      orderId: order.order_id,
+      name: order.name,
+      totalAmount: order.totalAmount,
+      subtotal: order.subtotal,
+      discountAmount: order.discountAmount || 0,
+      status: order.status,
+      date: order.createdAt,
+      hasInvoice: !!order.invoice,
+      existingInvoice: order.invoice ? {
+        invoiceNumber: (order.invoice as any).invoiceNumber,
+        status: (order.invoice as any).status
+      } : null,
+      customer: {
+        name: (order.user as any)?.name || 'Unknown',
+        email: (order.user as any)?.email || 'Unknown'
+      },
+      address: order.address ? {
+        fullName: (order.address as any).fullName,
+        phoneNumber: (order.address as any).phoneNumber,
+        streetAddress: (order.address as any).streetAddress,
+        city: (order.address as any).city,
+        state: (order.address as any).state,
+        country: (order.address as any).country,
+        postalCode: (order.address as any).postalCode
+      } : null,
+      items: order.items.map((item: any) => ({
+        productId: item.productId?._id,
+        productName: item.productId?.name || 'Product',
+        quantity: item.quantity,
+        price: item.price,
+        total: item.price * item.quantity
+      }))
+    };
+
+    res.json({
+      success: true,
+      data: orderData
+    });
+    return;
+  } catch (error) {
+    console.error('Error fetching order details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching order details',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
     return;

@@ -108,7 +108,8 @@ export const getUserOrders = async (req: RequestWithUser, res: Response) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .populate('items.designId', 'name thumbnail'),
+        .populate('items.designId', 'name thumbnail')
+        .populate('invoice', 'invoiceNumber status date total'),
       Order.countDocuments(query)
     ]);
 
@@ -122,7 +123,13 @@ export const getUserOrders = async (req: RequestWithUser, res: Response) => {
         productId: item.productId,
         quantity: item.quantity,
         price: item.price
-      }))
+      })),
+      invoice: order.invoice ? {
+        invoiceNumber: (order.invoice as any).invoiceNumber,
+        status: (order.invoice as any).status,
+        date: (order.invoice as any).date,
+        total: (order.invoice as any).total
+      } : null
     }));
 
     res.json({

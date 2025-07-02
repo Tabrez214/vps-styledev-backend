@@ -42,6 +42,9 @@ export interface IInvoice extends Document {
   companyPhone: string;
   companyEmail: string;
   gstNumber?: string; // Company GST number
+  // Order reference
+  orderId?: string; // Reference to the order ID
+  order?: mongoose.Schema.Types.ObjectId; // Reference to the Order document
   createdAt: Date;
   updatedAt: Date;
 }
@@ -243,6 +246,17 @@ const InvoiceSchema = new Schema<IInvoice>({
   gstNumber: { // Company GST number
     type: String,
     trim: true
+  },
+  // Order reference fields
+  orderId: {
+    type: String,
+    trim: true,
+    index: true // Add index for faster queries
+  },
+  order: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Order',
+    index: true // Add index for faster queries
   },
   status: {
     type: String,
