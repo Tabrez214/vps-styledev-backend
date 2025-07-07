@@ -19,6 +19,7 @@ const invoiceItemSchema = z.object({
 
 const invoiceSchema = z.object({
   invoiceNumber: z.string().min(1).trim(),
+  invoiceType: z.enum(['tax', 'proforma']).default('proforma'),
   date: z.coerce.date(),
   dueDate: z.coerce.date(),
   customerName: z.string().min(1).trim(),
@@ -50,7 +51,10 @@ const invoiceSchema = z.object({
   // Order reference fields
   orderId: z.string().optional(),
   order: z.string().optional(), // MongoDB ObjectId as string
-  status: z.enum(['draft', 'sent', 'paid', 'overdue', 'cancelled']).optional()
+  status: z.enum(['draft', 'sent', 'paid', 'overdue', 'cancelled']).optional(),
+  // Conversion tracking
+  convertedFrom: z.string().optional(), // MongoDB ObjectId as string
+  convertedTo: z.string().optional() // MongoDB ObjectId as string
 });
 
 const updateInvoiceSchema = invoiceSchema.partial();
@@ -67,6 +71,10 @@ router.get('/', async (req: Request, res: Response) => {
     
     if (req.query.status) {
       filter.status = req.query.status;
+    }
+    
+    if (req.query.invoiceType) {
+      filter.invoiceType = req.query.invoiceType;
     }
     
     if (req.query.customerName) {
@@ -583,6 +591,85 @@ router.get('/order/:orderId', async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching order details',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+    return;
+  }
+});
+
+// POST /api/invoices/:id/convert - Convert proforma to tax invoice
+router.post('/:id/convert', async (req: Request, res: Response) => {
+  try {
+    const proformaInvoice = await Invoice.findById(req.params.id);
+    
+    if (!proformaInvoice) {
+      res.status(404).json({
+        success: false,
+        message: 'Proforma invoice not found'
+      });
+      return;
+    }
+
+    if (proformaInvoice.invoiceType !== 'proforma') {
+      res.status(400).json({
+        success: false,
+        message: 'Only proforma invoices can be converted to tax invoices'
+      });
+      return;
+    }
+
+    if (proformaInvoice.convertedTo) {
+      res.status(400).json({
+        success: false,
+        message: 'This proforma invoice has already been converted to a tax invoice'
+      });
+      return;
+    }
+
+    // Generate new invoice number for tax invoice
+    const generateTaxInvoiceNumber = (): string => {
+      const date = new Date();
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const timestamp = Date.now().toString().slice(-4);
+      
+      return `TAX-${year}${month}${day}-${timestamp}`;
+    };
+
+    // Create tax invoice from proforma
+    const taxInvoiceData = {
+      ...proformaInvoice.toObject(),
+      _id: undefined, // Remove the _id to create new document
+      invoiceNumber: generateTaxInvoiceNumber(),
+      invoiceType: 'tax' as const,
+      convertedFrom: proformaInvoice._id,
+      convertedTo: undefined,
+      createdAt: undefined,
+      updatedAt: undefined
+    };
+
+    const taxInvoice = new Invoice(taxInvoiceData);
+    await taxInvoice.save();
+
+    // Update proforma invoice to reference the tax invoice
+    proformaInvoice.convertedTo = taxInvoice._id;
+    await proformaInvoice.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Proforma invoice converted to tax invoice successfully',
+      data: {
+        proformaInvoice,
+        taxInvoice
+      }
+    });
+    return;
+  } catch (error) {
+    console.error('Error converting invoice:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error converting invoice',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
     return;

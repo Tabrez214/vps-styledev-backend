@@ -13,6 +13,7 @@ export interface IInvoiceItem {
 
 export interface IInvoice extends Document {
   invoiceNumber: string;
+  invoiceType: 'tax' | 'proforma'; // Added invoice type
   date: Date;
   dueDate: Date;
   customerName: string;
@@ -45,6 +46,9 @@ export interface IInvoice extends Document {
   // Order reference
   orderId?: string; // Reference to the order ID
   order?: mongoose.Schema.Types.ObjectId; // Reference to the Order document
+  // Conversion tracking
+  convertedFrom?: mongoose.Schema.Types.ObjectId; // Reference to proforma invoice if converted
+  convertedTo?: mongoose.Schema.Types.ObjectId; // Reference to tax invoice if converted
   createdAt: Date;
   updatedAt: Date;
 }
@@ -95,6 +99,12 @@ const InvoiceSchema = new Schema<IInvoice>({
     required: true,
     unique: true,
     trim: true
+  },
+  invoiceType: {
+    type: String,
+    required: true,
+    enum: ['tax', 'proforma'],
+    default: 'proforma'
   },
   date: {
     type: Date,
@@ -263,6 +273,17 @@ const InvoiceSchema = new Schema<IInvoice>({
     required: true,
     enum: ['draft', 'sent', 'paid', 'overdue', 'cancelled'],
     default: 'draft'
+  },
+  // Conversion tracking fields
+  convertedFrom: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Invoice',
+    index: true
+  },
+  convertedTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Invoice',
+    index: true
   }
 }, {
   timestamps: true
@@ -273,5 +294,8 @@ InvoiceSchema.index({ invoiceNumber: 1 });
 InvoiceSchema.index({ customerName: 1 });
 InvoiceSchema.index({ date: -1 });
 InvoiceSchema.index({ status: 1 });
+InvoiceSchema.index({ invoiceType: 1 });
+InvoiceSchema.index({ convertedFrom: 1 });
+InvoiceSchema.index({ convertedTo: 1 });
 
 export const Invoice = mongoose.models.Invoice || mongoose.model<IInvoice>('Invoice', InvoiceSchema);
