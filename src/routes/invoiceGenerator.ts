@@ -43,10 +43,10 @@ const invoiceSchema = z.object({
   total: z.number().min(0),
   notes: z.string().optional(),
   // Company information
-  companyName: z.string().min(1).default('Styledev'),
-  companyAddress: z.string().min(1).default('123 Business Street, City, State - 123456'),
-  companyPhone: z.string().min(1).default('+91 98765 43210'),
-  companyEmail: z.string().email().default('info@styledev.com'),
+  companyName: z.string().min(1),
+  companyAddress: z.string().min(1),
+  companyPhone: z.string().min(1),
+  companyEmail: z.string().email(),
   gstNumber: z.string().optional(), // Company GST number
   // Order reference fields
   orderId: z.string().optional(),

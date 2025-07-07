@@ -232,26 +232,22 @@ const InvoiceSchema = new Schema<IInvoice>({
   companyName: {
     type: String,
     required: true,
-    trim: true,
-    default: 'Styledev'
+    trim: true
   },
   companyAddress: {
     type: String,
     required: true,
-    trim: true,
-    default: '123 Business Street, City, State - 123456'
+    trim: true
   },
   companyPhone: {
     type: String,
     required: true,
-    trim: true,
-    default: '+91 98765 43210'
+    trim: true
   },
   companyEmail: {
     type: String,
     required: true,
-    trim: true,
-    default: 'info@styledev.com'
+    trim: true
   },
   gstNumber: { // Company GST number
     type: String,
