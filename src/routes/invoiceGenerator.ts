@@ -42,11 +42,7 @@ const invoiceSchema = z.object({
   igstAmount: z.number().min(0),
   total: z.number().min(0),
   notes: z.string().optional(),
-  // Company information
-  companyName: z.string().min(1),
-  companyAddress: z.string().min(1),
-  companyPhone: z.string().min(1),
-  companyEmail: z.string().email(),
+  // Company information - removed as they are hardcoded in PDF
   gstNumber: z.string().optional(), // Company GST number
   // Order reference fields
   orderId: z.string().optional(),

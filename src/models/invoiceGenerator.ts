@@ -37,11 +37,7 @@ export interface IInvoice extends Document {
   total: number;
   notes?: string;
   status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
-  // Company information
-  companyName: string;
-  companyAddress: string;
-  companyPhone: string;
-  companyEmail: string;
+  // Company information - removed as they are hardcoded in PDF
   gstNumber?: string; // Company GST number
   // Order reference
   orderId?: string; // Reference to the order ID
@@ -229,26 +225,6 @@ const InvoiceSchema = new Schema<IInvoice>({
     trim: true
   },
   // Company information
-  companyName: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  companyAddress: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  companyPhone: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  companyEmail: {
-    type: String,
-    required: true,
-    trim: true
-  },
   gstNumber: { // Company GST number
     type: String,
     trim: true
