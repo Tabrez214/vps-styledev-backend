@@ -29,11 +29,37 @@ router.post("/products", authMiddleware, authorizeRoles("admin"), async (req, re
 
     // Validate images
     const imageUrls = (req.body.images || []).map((image: any) => ({
-      url: `${process.env.BASE_URL}${image.url}`,
+      url: image.url.startsWith('http') ? image.url : `${process.env.BASE_URL}${image.url}`,
       caption: image.caption,
       isDefault: image.isDefault,
       imageAlt: image.imageAlt,
     }));
+
+    // Process colors with images
+    const processedColors = (req.body.colors || []).map((color: any) => {
+      const processedColor = {
+        name: color.name,
+        hexCode: color.hexCode,
+        images: []
+      };
+
+      if (color.images && Array.isArray(color.images)) {
+        processedColor.images = color.images.map((image: any) => ({
+          url: image.url.startsWith('http') ? image.url : `${process.env.BASE_URL}${image.url}`,
+          caption: image.caption || '',
+          isDefault: image.isDefault || false,
+          imageAlt: image.imageAlt || '',
+        }));
+      }
+
+      return processedColor;
+    });
+
+    // Process bulk pricing
+    const bulkPricing = (req.body.bulkPricing || []).map((pricing: any) => ({
+      quantity: Number(pricing.quantity),
+      pricePerItem: typeof pricing.pricePerItem === 'string' ? parseFloat(pricing.pricePerItem) : Number(pricing.pricePerItem),
+    })).filter((pricing: any) => pricing.quantity > 0 && pricing.pricePerItem > 0);
 
     // Define sizesArray
     let sizesArray;
@@ -72,6 +98,13 @@ router.post("/products", authMiddleware, authorizeRoles("admin"), async (req, re
       sizes: sizesArray,
       categories: categoryIds,
       images: imageUrls,
+      colors: processedColors,
+      bulkPricing: bulkPricing,
+      stock: Number(req.body.stock) || 0,
+      rushOrderAvailable: Boolean(req.body.rushOrderAvailable),
+      superRushAvailable: Boolean(req.body.superRushAvailable),
+      rushOrderDays: Number(req.body.rushOrderDays) || 10,
+      superRushOrderDays: Number(req.body.superRushOrderDays) || 3,
     };
 
     console.log("Validated product data:", parsedData);
@@ -142,18 +175,57 @@ router.put("/products/:id", authMiddleware, authorizeRoles("admin"), async (req,
     let updatedImages = undefined;
     if (Array.isArray(req.body.images)) {
       updatedImages = req.body.images.map((image: any) => ({
-        url: image.url,
+        url: image.url.startsWith('http') ? image.url : `${process.env.BASE_URL}${image.url}`,
         caption: image.caption,
         isDefault: image.isDefault,
         imageAlt: image.imageAlt,
       }));
     }
 
-    // Updated request body with transformed sizes and images
+    // Process colors with images for update
+    let updatedColors = undefined;
+    if (Array.isArray(req.body.colors)) {
+      updatedColors = req.body.colors.map((color: any) => {
+        const processedColor = {
+          name: color.name,
+          hexCode: color.hexCode,
+          images: []
+        };
+
+        if (color.images && Array.isArray(color.images)) {
+          processedColor.images = color.images.map((image: any) => ({
+            url: image.url.startsWith('http') ? image.url : `${process.env.BASE_URL}${image.url}`,
+            caption: image.caption || '',
+            isDefault: image.isDefault || false,
+            imageAlt: image.imageAlt || '',
+          }));
+        }
+
+        return processedColor;
+      });
+    }
+
+    // Process bulk pricing for update
+    let updatedBulkPricing = undefined;
+    if (Array.isArray(req.body.bulkPricing)) {
+      updatedBulkPricing = req.body.bulkPricing.map((pricing: any) => ({
+        quantity: Number(pricing.quantity),
+        pricePerItem: typeof pricing.pricePerItem === 'string' ? parseFloat(pricing.pricePerItem) : Number(pricing.pricePerItem),
+      })).filter((pricing: any) => pricing.quantity > 0 && pricing.pricePerItem > 0);
+    }
+
+    // Updated request body with transformed data
     const updatedBody = {
       ...req.body,
       sizes: sizesArray,
       ...(updatedImages ? { images: updatedImages } : {}),
+      ...(updatedColors ? { colors: updatedColors } : {}),
+      ...(updatedBulkPricing ? { bulkPricing: updatedBulkPricing } : {}),
+      ...(req.body.stock !== undefined ? { stock: Number(req.body.stock) } : {}),
+      ...(req.body.rushOrderAvailable !== undefined ? { rushOrderAvailable: Boolean(req.body.rushOrderAvailable) } : {}),
+      ...(req.body.superRushAvailable !== undefined ? { superRushAvailable: Boolean(req.body.superRushAvailable) } : {}),
+      ...(req.body.rushOrderDays !== undefined ? { rushOrderDays: Number(req.body.rushOrderDays) } : {}),
+      ...(req.body.superRushOrderDays !== undefined ? { superRushOrderDays: Number(req.body.superRushOrderDays) } : {}),
     };
 
     const validatedProduct = ProductSchema.parse(updatedBody);
