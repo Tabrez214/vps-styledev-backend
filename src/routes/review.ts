@@ -310,7 +310,7 @@ router.post("/reviews/:id/helpful", authMiddleware, async (req: Request, res: Re
       review.helpful = Math.max(0, review.helpful - 1);
     } else {
       // Add vote
-      review.helpfulVotes.push(new mongoose.Types.ObjectId(userId));
+      (review.helpfulVotes as any).push(userId);
       review.helpful += 1;
     }
 
