@@ -23,6 +23,10 @@ interface IProduct extends Document {
   superRushAvailable: boolean;
   rushOrderDays: number;
   superRushOrderDays: number;
+  metaTitle?: string;
+  metaDescription?: string;
+  rating: number;
+  totalReviews: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -81,6 +85,27 @@ const ProductSchema = new Schema<IProduct>(
     superRushAvailable: { type: Boolean, default: false },
     rushOrderDays: { type: Number, default: 10 },
     superRushOrderDays: { type: Number, default: 3 },
+    metaTitle: {
+      type: String,
+      maxlength: 60,
+      trim: true
+    },
+    metaDescription: {
+      type: String,
+      maxlength: 160,
+      trim: true
+    },
+    rating: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5
+    },
+    totalReviews: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
   },
   { timestamps: true }
 );

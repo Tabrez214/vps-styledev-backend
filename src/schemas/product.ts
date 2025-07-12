@@ -57,6 +57,21 @@ export const ProductSchema = z.object({
   superRushAvailable: z.boolean().default(false),
   rushOrderDays: z.number().positive("Rush order days must be greater than 0").default(10),
   superRushOrderDays: z.number().positive("Super rush order days must be greater than 0").default(3),
+  metaTitle: z.string()
+    .max(60, "Meta title must be less than 60 characters")
+    .trim()
+    .optional(),
+  metaDescription: z.string()
+    .max(160, "Meta description must be less than 160 characters")
+    .trim()
+    .optional(),
+  rating: z.number()
+    .min(0, "Rating must be at least 0")
+    .max(5, "Rating must be at most 5")
+    .default(0),
+  totalReviews: z.number()
+    .min(0, "Total reviews must be at least 0")
+    .default(0),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
 });

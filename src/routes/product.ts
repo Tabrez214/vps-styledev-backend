@@ -105,6 +105,8 @@ router.post("/products", authMiddleware, authorizeRoles("admin"), async (req, re
       superRushAvailable: Boolean(req.body.superRushAvailable),
       rushOrderDays: Number(req.body.rushOrderDays) || 10,
       superRushOrderDays: Number(req.body.superRushOrderDays) || 3,
+      ...(req.body.metaTitle ? { metaTitle: req.body.metaTitle.trim() } : {}),
+      ...(req.body.metaDescription ? { metaDescription: req.body.metaDescription.trim() } : {}),
     };
 
     console.log("Validated product data:", parsedData);
@@ -226,6 +228,8 @@ router.put("/products/:id", authMiddleware, authorizeRoles("admin"), async (req,
       ...(req.body.superRushAvailable !== undefined ? { superRushAvailable: Boolean(req.body.superRushAvailable) } : {}),
       ...(req.body.rushOrderDays !== undefined ? { rushOrderDays: Number(req.body.rushOrderDays) } : {}),
       ...(req.body.superRushOrderDays !== undefined ? { superRushOrderDays: Number(req.body.superRushOrderDays) } : {}),
+      ...(req.body.metaTitle !== undefined ? { metaTitle: req.body.metaTitle.trim() } : {}),
+      ...(req.body.metaDescription !== undefined ? { metaDescription: req.body.metaDescription.trim() } : {}),
     };
 
     const validatedProduct = ProductSchema.parse(updatedBody);
