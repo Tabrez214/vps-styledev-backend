@@ -1,10 +1,10 @@
-import express from "express";
+import express, { Request, Response } from "express";
 import { authMiddleware } from "../middleware/authMiddleware";
 import Review from "../models/review";
 import Product from "../models/product";
 import Order from "../models/order";
 import { CreateReviewSchema, ReviewQuerySchema } from "../schemas/review";
-import { Types } from "mongoose";
+import mongoose from "mongoose";
 
 const router = express.Router();
 
@@ -48,22 +48,24 @@ async function checkUserPurchase(userId: string, productId: string): Promise<boo
 }
 
 // GET /api/products/:id/reviews - Get reviews for a product
-router.get("/products/:id/reviews", async (req, res) => {
+router.get("/products/:id/reviews", async (req: Request, res: Response): Promise<void> => {
   try {
     const productId = req.params.id;
     
     // Validate product ID
-    if (!Types.ObjectId.isValid(productId)) {
-      return res.status(400).json({ error: 'Invalid product ID' });
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      res.status(400).json({ error: 'Invalid product ID' });
+      return;
     }
 
     // Validate query parameters
     const queryValidation = ReviewQuerySchema.safeParse(req.query);
     if (!queryValidation.success) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         error: 'Invalid query parameters',
         details: queryValidation.error.errors
       });
+      return;
     }
 
     const { sortBy, rating, verified, page, limit } = queryValidation.data;
@@ -118,24 +120,27 @@ router.get("/products/:id/reviews", async (req, res) => {
 });
 
 // POST /api/products/:id/reviews - Create new review
-router.post("/products/:id/reviews", authMiddleware, async (req, res) => {
+router.post("/products/:id/reviews", authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const productId = req.params.id;
     const userId = req.user?.userId;
 
     if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
+      res.status(401).json({ error: 'User not authenticated' });
+      return;
     }
 
     // Validate product ID
-    if (!Types.ObjectId.isValid(productId)) {
-      return res.status(400).json({ error: 'Invalid product ID' });
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      res.status(400).json({ error: 'Invalid product ID' });
+      return;
     }
 
     // Check if product exists
     const product = await Product.findById(productId);
     if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
+      res.status(404).json({ error: 'Product not found' });
+      return;
     }
 
     // Check if user already reviewed this product
@@ -145,16 +150,18 @@ router.post("/products/:id/reviews", authMiddleware, async (req, res) => {
     });
 
     if (existingReview) {
-      return res.status(400).json({ error: 'You have already reviewed this product' });
+      res.status(400).json({ error: 'You have already reviewed this product' });
+      return;
     }
 
     // Validate request body
     const validation = CreateReviewSchema.safeParse(req.body);
     if (!validation.success) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         error: 'Invalid review data',
         details: validation.error.errors
       });
+      return;
     }
 
     const { rating, title, comment, images } = validation.data;
@@ -166,7 +173,8 @@ router.post("/products/:id/reviews", authMiddleware, async (req, res) => {
     const User = require('../models/user').default;
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      res.status(404).json({ error: 'User not found' });
+      return;
     }
 
     const review = new Review({
@@ -197,23 +205,25 @@ router.post("/products/:id/reviews", authMiddleware, async (req, res) => {
 });
 
 // GET /api/products/:id/reviews/stats - Get review statistics
-router.get("/products/:id/reviews/stats", async (req, res) => {
+router.get("/products/:id/reviews/stats", async (req: Request, res: Response): Promise<void> => {
   try {
     const productId = req.params.id;
 
     // Validate product ID
-    if (!Types.ObjectId.isValid(productId)) {
-      return res.status(400).json({ error: 'Invalid product ID' });
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      res.status(400).json({ error: 'Invalid product ID' });
+      return;
     }
 
     const reviews = await Review.find({ productId });
 
     if (reviews.length === 0) {
-      return res.json({
+      res.json({
         totalReviews: 0,
         averageRating: 0,
         ratingDistribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
       });
+      return;
     }
 
     const totalReviews = reviews.length;
@@ -236,18 +246,20 @@ router.get("/products/:id/reviews/stats", async (req, res) => {
 });
 
 // GET /api/products/:id/reviews/user - Check if user has reviewed product
-router.get("/products/:id/reviews/user", authMiddleware, async (req, res) => {
+router.get("/products/:id/reviews/user", authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const productId = req.params.id;
     const userId = req.user?.userId;
 
     if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
+      res.status(401).json({ error: 'User not authenticated' });
+      return;
     }
 
     // Validate product ID
-    if (!Types.ObjectId.isValid(productId)) {
-      return res.status(400).json({ error: 'Invalid product ID' });
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      res.status(400).json({ error: 'Invalid product ID' });
+      return;
     }
 
     const review = await Review.findOne({
@@ -266,26 +278,29 @@ router.get("/products/:id/reviews/user", authMiddleware, async (req, res) => {
 });
 
 // POST /api/reviews/:id/helpful - Vote review as helpful
-router.post("/reviews/:id/helpful", authMiddleware, async (req, res) => {
+router.post("/reviews/:id/helpful", authMiddleware, async (req: Request, res: Response): Promise<void> => {
   try {
     const reviewId = req.params.id;
     const userId = req.user?.userId;
 
     if (!userId) {
-      return res.status(401).json({ error: 'User not authenticated' });
+      res.status(401).json({ error: 'User not authenticated' });
+      return;
     }
 
     // Validate review ID
-    if (!Types.ObjectId.isValid(reviewId)) {
-      return res.status(400).json({ error: 'Invalid review ID' });
+    if (!mongoose.Types.ObjectId.isValid(reviewId)) {
+      res.status(400).json({ error: 'Invalid review ID' });
+      return;
     }
 
     const review = await Review.findById(reviewId);
     if (!review) {
-      return res.status(404).json({ error: 'Review not found' });
+      res.status(404).json({ error: 'Review not found' });
+      return;
     }
 
-    const hasVoted = review.helpfulVotes.includes(new Types.ObjectId(userId));
+    const hasVoted = review.helpfulVotes.some(id => id.toString() === userId);
 
     if (hasVoted) {
       // Remove vote
@@ -295,7 +310,7 @@ router.post("/reviews/:id/helpful", authMiddleware, async (req, res) => {
       review.helpful = Math.max(0, review.helpful - 1);
     } else {
       // Add vote
-      review.helpfulVotes.push(new Types.ObjectId(userId));
+      review.helpfulVotes.push(new mongoose.Types.ObjectId(userId));
       review.helpful += 1;
     }
 
