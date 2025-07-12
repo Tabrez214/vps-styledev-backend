@@ -26,6 +26,7 @@ import assetRoutes from './routes/design-studio/asset';
 import designStudioUploadRouter from './routes/design-studio/upload';
 import emailRouter from './routes/email';
 import invoiceRouter from './routes/invoiceGenerator';
+import reviewRouter from './routes/review';
 dotenv.config();
 
 export const app = express();
@@ -213,6 +214,7 @@ app.use('/designs', designRoutes);
 app.use('/assets', assetRoutes);
 app.use('/email', emailRouter);
 app.use('/invoices', invoiceRouter);
+app.use('/api', reviewRouter);
 
 // Start server
 const PORT = process.env.PORT || 3001;
