@@ -99,10 +99,10 @@ router.post('/images', upload.single('image'), async (req: Request, res: Respons
     res.status(201).json({
       success: true,
       data: {
+        ...newAsset.toObject(),
         id: newAsset._id,
         url,
         thumbnailUrl: url,
-        ...newAsset.toObject(),
       },
       message: 'File uploaded successfully'
     });
