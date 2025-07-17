@@ -37,22 +37,32 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  const allowedTypes = /jpeg|jpg|png|gif|svg|webp/;
-  const mimetype = allowedTypes.test(file.mimetype);
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const allowedExtensions = ['.jpeg', '.jpg', '.png', '.gif', '.svg', '.webp', '.pdf', '.psd', '.ai', '.eps'];
+  const allowedMimeTypes = [
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/svg+xml',
+    'image/webp',
+    'application/pdf',
+    'application/postscript', // For AI and EPS
+    'image/vnd.adobe.photoshop' // For PSD
+  ];
 
-  if (mimetype && extname) {
-    return cb(null, true);
+  const fileExt = path.extname(file.originalname).toLowerCase();
+
+  if (allowedExtensions.includes(fileExt) || allowedMimeTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only image, PDF, and design files are allowed.'));
   }
-
-  cb(new Error('Only image files are allowed'));
 };
 
 const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: 100 * 1024 * 1024 // 100MB limit
   }
 });
 
@@ -63,23 +73,24 @@ router.post('/images', upload.single('image'), async (req: Request, res: Respons
       return;
     }
 
-    const filePath = req.file.path.split('uploads')[1];
+    const filePath = req.file.path.split('uploads')[1].replace(/\\/g, '/');
     const url = `/uploads${filePath}`;
-    const thumbnailUrl = url;
 
     const newAsset = new Asset({
       type: req.body.type || 'uploaded',
       category: req.body.category,
       tags: req.body.tags ? req.body.tags.split(',') : [],
       url,
-      thumbnailUrl,
+      thumbnailUrl: url, // Placeholder, might need actual thumbnail generation later
       dimensions: {
-        width: req.body.width || 500,
-        height: req.body.height || 500
+        width: req.body.width || 0, // Will be updated later if possible
+        height: req.body.height || 0,
       },
       metadata: {
         uploadedBy: req.body.uploadedBy || 'user',
-        originalFilename: req.file.originalname
+        originalFilename: req.file.originalname,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
       }
     });
 
@@ -87,13 +98,17 @@ router.post('/images', upload.single('image'), async (req: Request, res: Respons
 
     res.status(201).json({
       success: true,
-      url,
-      thumbnailUrl,
-      assetId: newAsset._id,
-      message: 'Image uploaded successfully'
+      data: {
+        id: newAsset._id,
+        url,
+        thumbnailUrl: url,
+        ...newAsset.toObject(),
+      },
+      message: 'File uploaded successfully'
     });
+
   } catch (error: any) {
-    console.error('Error uploading image:', error);
+    console.error('Error uploading file:', error);
     res.status(500).json({ success: false, message: error.message || 'Server error' });
   }
 });
