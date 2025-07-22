@@ -60,7 +60,7 @@ const generateUniqueSlug = async (name: string, excludeId?: string): Promise<str
 router.get("/", async (req, res) => {
   try {
     const categories = await Category.find()
-      .select('name slug parent featured imageUrl imageAlt ancestors createdAt updatedAt')
+      .select('name slug parent featured imageUrl imageAlt ancestors createdAt updatedAt description metaTitle metaDescription')
       .populate('parent', 'name slug'); 
     res.status(200).json(categories);
   } catch (error) {
