@@ -1,11 +1,11 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, ErrorRequestHandler } from 'express';
 
 /**
  * Custom error class for API errors with status code
  */
 export class ApiError extends Error {
   statusCode: number;
-  
+
   constructor(statusCode: number, message: string) {
     super(message);
     this.statusCode = statusCode;
@@ -19,7 +19,7 @@ export class ApiError extends Error {
  */
 export class ValidationError extends ApiError {
   errors: any[];
-  
+
   constructor(message: string, errors: any[] = []) {
     super(400, message);
     this.errors = errors;
@@ -56,42 +56,45 @@ export class AuthorizationError extends ApiError {
 /**
  * Global error handler middleware
  */
-export const errorHandler = (
+export const errorHandler: ErrorRequestHandler = (
   err: Error,
   req: Request,
   res: Response,
   next: NextFunction
-) => {
+): void => {
   console.error('Error:', err);
-  
+
   // Handle ApiError instances
   if (err instanceof ApiError) {
-    return res.status(err.statusCode).json({
+    res.status(err.statusCode).json({
       success: false,
       message: err.message,
       errors: err instanceof ValidationError ? err.errors : undefined
     });
+    return;
   }
-  
+
   // Handle Mongoose validation errors
   if (err.name === 'ValidationError') {
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       message: 'Validation error',
       errors: err
     });
+    return;
   }
-  
+
   // Handle JWT errors
   if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
-    return res.status(401).json({
+    res.status(401).json({
       success: false,
       message: 'Invalid or expired token'
     });
+    return;
   }
-  
+
   // Handle other errors
-  return res.status(500).json({
+  res.status(500).json({
     success: false,
     message: 'Internal server error'
   });
