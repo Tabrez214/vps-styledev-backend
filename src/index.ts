@@ -4,7 +4,6 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import userRouter from './routes/user';
 import productRouter from './routes/product';
-import productSearchRouter from './routes/product-search';
 import uploadRouter from './routes/upload';
 import orderRouter from './routes/order';
 import wishlistRouter from './routes/wishlist'
@@ -190,7 +189,6 @@ app.use('/auth', authRouter);
 app.use('/user', userRouter);
 
 app.use('/', productRouter)
-app.use('/', productSearchRouter)
 
 app.use('/api', uploadRouter)
 
