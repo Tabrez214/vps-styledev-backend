@@ -2,10 +2,11 @@ import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import userRouter from './routes/user'; 
-import productRouter from './routes/product'; 
-import uploadRouter from './routes/upload'; 
-import orderRouter from './routes/order'; 
+import userRouter from './routes/user';
+import productRouter from './routes/product';
+import productSearchRouter from './routes/product-search';
+import uploadRouter from './routes/upload';
+import orderRouter from './routes/order';
 import wishlistRouter from './routes/wishlist'
 import cartRouter from './routes/cart'
 import categoryRouter from './routes/category'
@@ -27,6 +28,7 @@ import designStudioUploadRouter from './routes/design-studio/upload';
 import emailRouter from './routes/email';
 import invoiceRouter from './routes/invoiceGenerator';
 import reviewRouter from './routes/review';
+import { errorHandler } from './middleware/errorMiddleware';
 dotenv.config();
 
 export const app = express();
@@ -52,9 +54,9 @@ const allowedOrigins = [
 
 // Middleware setup
 app.use(cors({
-  origin: function(origin, callback) {
+  origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-    
+
     if (allowedOrigins.indexOf(origin) === -1) {
       const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
       return callback(new Error(msg), false);
@@ -96,10 +98,10 @@ app.use('/uploads', express.static(uploadsDir, {
   index: false,
   setHeaders: (res, filePath) => {
     console.log('Serving file:', filePath);
-    
+
     // Set proper content type for images
     const ext = path.extname(filePath).toLowerCase();
-    switch(ext) {
+    switch (ext) {
       case '.jpg':
       case '.jpeg':
         res.setHeader('Content-Type', 'image/jpeg');
@@ -114,7 +116,7 @@ app.use('/uploads', express.static(uploadsDir, {
         res.setHeader('Content-Type', 'image/webp');
         break;
     }
-    
+
     // Enable CORS for images
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
@@ -132,10 +134,10 @@ app.use('/tshirt-images', express.static(tshirtImagesDir, {
   index: false,
   setHeaders: (res, filePath) => {
     console.log('Serving t-shirt image:', filePath);
-    
+
     // Set proper content type for images
     const ext = path.extname(filePath).toLowerCase();
-    switch(ext) {
+    switch (ext) {
       case '.jpg':
       case '.jpeg':
         res.setHeader('Content-Type', 'image/jpeg');
@@ -144,7 +146,7 @@ app.use('/tshirt-images', express.static(tshirtImagesDir, {
         res.setHeader('Content-Type', 'image/png');
         break;
     }
-    
+
     // Enable CORS for images
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET');
@@ -156,9 +158,9 @@ app.use('/tshirt-images', express.static(tshirtImagesDir, {
 app.get('/uploads/health', (req, res) => {
   const testFile = 'category-1749047438829.jpg';
   const testPath = path.join(uploadsDir, testFile);
-  
-  res.json({ 
-    status: 'ok', 
+
+  res.json({
+    status: 'ok',
     uploadsDir: uploadsDir,
     exists: fs.existsSync(uploadsDir),
     testFile: {
@@ -173,8 +175,8 @@ app.get('/uploads/health', (req, res) => {
 
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI || "")
-.then(() => console.log("Connected to MongoDB"))
-.catch((err) => console.error("MongoDB connection error:", err));
+  .then(() => console.log("Connected to MongoDB"))
+  .catch((err) => console.error("MongoDB connection error:", err));
 
 // Define the root route
 app.get('/', (req, res) => {
@@ -188,6 +190,7 @@ app.use('/auth', authRouter);
 app.use('/user', userRouter);
 
 app.use('/', productRouter)
+app.use('/', productSearchRouter)
 
 app.use('/api', uploadRouter)
 
@@ -215,6 +218,17 @@ app.use('/assets', assetRoutes);
 app.use('/email', emailRouter);
 app.use('/invoices', invoiceRouter);
 app.use('/api', reviewRouter);
+
+// Global error handler - MUST be last middleware
+app.use(errorHandler);
+
+// 404 handler for unmatched routes
+app.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route ${req.originalUrl} not found`
+  });
+});
 
 // Start server
 const PORT = process.env.PORT || 3001;
