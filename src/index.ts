@@ -29,6 +29,7 @@ import emailRouter from './routes/email';
 import invoiceRouter from './routes/invoiceGenerator';
 import reviewRouter from './routes/review';
 import { errorHandler } from './middleware/errorMiddleware';
+import { ErrorRequestHandler } from 'express';
 dotenv.config();
 
 export const app = express();
@@ -220,7 +221,7 @@ app.use('/invoices', invoiceRouter);
 app.use('/api', reviewRouter);
 
 // Global error handler - MUST be last middleware
-app.use(errorHandler);
+app.use(errorHandler as ErrorRequestHandler);
 
 // 404 handler for unmatched routes
 app.use('*', (req, res) => {
