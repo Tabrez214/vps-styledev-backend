@@ -27,6 +27,7 @@ import designStudioUploadRouter from './routes/design-studio/upload';
 import emailRouter from './routes/email';
 import invoiceRouter from './routes/invoiceGenerator';
 import reviewRouter from './routes/review';
+import designSubmissionRouter from './routes/designSubmission';
 import { errorHandler } from './middleware/errorMiddleware';
 dotenv.config();
 
@@ -216,6 +217,7 @@ app.use('/assets', assetRoutes);
 app.use('/email', emailRouter);
 app.use('/invoices', invoiceRouter);
 app.use('/api', reviewRouter);
+app.use('/design-challenge', designSubmissionRouter);
 
 // Global error handler - MUST be last middleware
 app.use(errorHandler);
