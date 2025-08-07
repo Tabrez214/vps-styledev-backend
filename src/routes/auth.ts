@@ -4,7 +4,7 @@ import bcrypt from 'bcrypt';
 import User from '../models/user';
 import { sendOTPEmail } from '../lib/emailService';
 import { generateOTP, storeOTP, verifyOTP } from '../lib/otpService';
-import { generateToken } from '../utils/jwt';
+import { generateToken, refreshAccessToken, revokeRefreshToken, generateTokenPair } from '../utils/jwt';
 import { UserSchema } from '../schemas/user';
 import { tempUserStore } from '../lib/tempUserStore';
 import { sendPasswordResetEmail } from '../lib/emailService';
@@ -27,7 +27,7 @@ router.post('/register', async (req: Request, res: Response) => {
 
     const { username, email, password, role } = parsedResult.data;
 
-    // Check if email exists
+    // Check if email exists in database (verified users)
     const existingEmail = await User.findOne({ email });
     if (existingEmail) {
       res.status(400).json({ 
@@ -37,7 +37,7 @@ router.post('/register', async (req: Request, res: Response) => {
       return;
     }
 
-    // Check if username exists
+    // Check if username exists in database (verified users)
     const existingUsername = await User.findOne({ username });
     if (existingUsername) {
       res.status(400).json({ 
@@ -47,14 +47,20 @@ router.post('/register', async (req: Request, res: Response) => {
       return;
     }
 
-    // Create user with isVerified set to false
-    const user = await User.create({
+    // Check if email exists in temporary storage
+    if (tempUserStore.has(email)) {
+      // Remove old temp user data and allow re-registration
+      tempUserStore.delete(email);
+    }
+
+    // Store user data temporarily (don't save to database yet)
+    tempUserStore.set(email, {
       username,
       email,
       password,
       role: role || 'user',
       name: username,
-      isVerified: false // Set to false to require email verification
+      timestamp: Date.now()
     });
 
     // Generate and store OTP
@@ -64,44 +70,34 @@ router.post('/register', async (req: Request, res: Response) => {
     // Send OTP email
     const emailSent = await sendOTPEmail(email, otp);
     if (!emailSent) {
-      // If email fails to send, still create the user but inform the client
+      // If email fails to send, remove from temp storage
+      tempUserStore.delete(email);
       console.error('Failed to send OTP email to:', email);
-      res.status(200).json({ 
-        message: "Account created but verification email failed to send. Please use the resend verification option.",
-        user: {
-          id: user._id,
-          username: user.username,
-          email: user.email,
-          role: user.role,
-          isVerified: false
-        }
+      res.status(500).json({ 
+        error: "Email service error",
+        message: "Failed to send verification email. Please try again."
       });
       return;
     }
 
-    console.log('Registration successful:', {
+    console.log('Registration initiated:', {
       email,
-      userId: user._id,
-      username: user.username,
-      otpSent: true
+      username,
+      otpSent: true,
+      storedInTemp: true
     });
 
     res.status(200).json({ 
-      message: "Registration successful. Please check your email for verification code.",
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        isVerified: false
-      }
+      message: "Registration initiated. Please check your email for verification code.",
+      email: email,
+      requiresVerification: true
     });
     return;
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ 
       error: "Registration failed",
-      message: "Failed to create account",
+      message: "Failed to initiate registration",
       details: error instanceof Error ? error.message : "Unknown error"
     });
     return;
@@ -172,13 +168,21 @@ router.post('/login', async (req: Request, res: Response) => {
       return;
     }
 
-    // Generate JWT token
-    const token = generateToken(user);
+    // Generate JWT tokens (both access and refresh)
+    const { accessToken, refreshToken } = await generateTokenPair(
+      user._id.toString(),
+      user.role,
+      user.consent,
+      req.headers['user-agent'],
+      req.ip
+    );
 
     console.log('Login successful for user:', email);
     res.json({
       message: "Login successful",
-      token,
+      token: accessToken, // For backward compatibility
+      accessToken,
+      refreshToken,
       user: {
         id: user._id,
         username: user.username,
@@ -207,22 +211,53 @@ router.post('/verify-otp', async (req: Request, res: Response) => {
       return;
     }
 
-    // Find and update the user
-    const user = await User.findOne({ email });
-    if (!user) {
-      res.status(404).json({ error: "User not found" });
+    // Check if user data exists in temporary storage
+    const tempUserData = tempUserStore.get(email);
+    if (!tempUserData) {
+      res.status(404).json({ error: "Registration data not found. Please register again." });
       return;
     }
 
-    // Update user verification status
-    user.isVerified = true;
-    await user.save();
+    // Check if temp data is not expired (15 minutes)
+    const fifteenMinutesAgo = Date.now() - (15 * 60 * 1000);
+    if (tempUserData.timestamp < fifteenMinutesAgo) {
+      tempUserStore.delete(email);
+      res.status(400).json({ error: "Registration session expired. Please register again." });
+      return;
+    }
+
+    // Check if user already exists in database (double-check)
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      tempUserStore.delete(email);
+      res.status(400).json({ error: "Email already registered" });
+      return;
+    }
+
+    // Create user in database now that OTP is verified
+    const user = await User.create({
+      username: tempUserData.username,
+      email: tempUserData.email,
+      password: tempUserData.password,
+      role: tempUserData.role,
+      name: tempUserData.name,
+      isVerified: true // Set to true since OTP is verified
+    });
+
+    // Remove from temporary storage
+    tempUserStore.delete(email);
 
     // Generate JWT token
     const token = generateToken(user);
 
+    console.log('Email verification successful and user created:', {
+      email,
+      userId: user._id,
+      username: user.username
+    });
+
     res.status(200).json({ 
-      message: "Email verified successfully",
+      message: "Email verified successfully and account created",
       token,
       user: {
         id: user._id,
@@ -247,14 +282,26 @@ router.post('/resend-otp', async (req: Request, res: Response) => {
       return;
     }
 
-    const user = await User.findOne({ email });
-    if (!user) {
-      res.status(404).json({ error: "User not found" });
+    // Check if user data exists in temporary storage
+    const tempUserData = tempUserStore.get(email);
+    if (!tempUserData) {
+      res.status(404).json({ error: "Registration data not found. Please register again." });
       return;
     }
 
-    if (user.isVerified) {
-      res.status(400).json({ error: "Email already verified" });
+    // Check if user already exists in database (already verified)
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      tempUserStore.delete(email);
+      res.status(400).json({ error: "Email already verified and registered" });
+      return;
+    }
+
+    // Check if temp data is not expired (15 minutes)
+    const fifteenMinutesAgo = Date.now() - (15 * 60 * 1000);
+    if (tempUserData.timestamp < fifteenMinutesAgo) {
+      tempUserStore.delete(email);
+      res.status(400).json({ error: "Registration session expired. Please register again." });
       return;
     }
 
@@ -268,6 +315,11 @@ router.post('/resend-otp', async (req: Request, res: Response) => {
       res.status(500).json({ error: "Failed to send verification email" });
       return;
     }
+
+    console.log('OTP resent for pending registration:', {
+      email,
+      username: tempUserData.username
+    });
 
     res.status(200).json({ message: "New verification code sent to your email" });
   } catch (error) {
@@ -475,6 +527,57 @@ router.post('/verify-reset-otp', async (req: Request, res: Response) => {
     res.status(500).json({ 
       error: "Server error",
       message: "An error occurred while verifying OTP. Please try again."
+    });
+  }
+});
+
+// Refresh token endpoint
+router.post('/refresh-token', async (req: Request, res: Response) => {
+  try {
+    const { refreshToken } = req.body;
+    
+    if (!refreshToken) {
+      res.status(400).json({
+        error: "Missing token",
+        message: "Refresh token is required"
+      });
+      return;
+    }
+    
+    // Attempt to refresh the access token
+    const { accessToken } = await refreshAccessToken(refreshToken);
+    
+    res.json({
+      message: "Token refreshed successfully",
+      accessToken
+    });
+  } catch (error) {
+    console.error('Token refresh error:', error);
+    res.status(401).json({
+      error: "Invalid refresh token",
+      message: "The refresh token is invalid or expired"
+    });
+  }
+});
+
+// Logout endpoint to revoke refresh token
+router.post('/logout', async (req: Request, res: Response) => {
+  try {
+    const { refreshToken } = req.body;
+    
+    if (refreshToken) {
+      // Revoke the refresh token if provided
+      await revokeRefreshToken(refreshToken);
+    }
+    
+    res.json({
+      message: "Logged out successfully"
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({
+      error: "Logout failed",
+      message: "An error occurred during logout"
     });
   }
 });
