@@ -145,7 +145,7 @@ router.get("/:id", authMiddleware, authorizeRoles("admin"), async (req: RequestW
 router.put("/:id", authMiddleware, authorizeRoles("admin"), async (req: RequestWithUser, res: Response) => {
   try {
     console.log("🔄 Updating discount code:", req.params.id);
-    
+
     if (!req.user) {
       res.status(401).json({ message: "Unauthorized: User not found" });
       return;
@@ -172,7 +172,7 @@ router.put("/:id", authMiddleware, authorizeRoles("admin"), async (req: RequestW
         code: code.toUpperCase(),
         _id: { $ne: req.params.id },
       });
-      
+
       if (existingCode) {
         res.status(400).json({ message: "Discount code already exists" });
         return;
@@ -242,27 +242,22 @@ router.delete("/:id", authMiddleware, authorizeRoles("admin"), async (req: Reque
   }
 });
 
-// Validate a discount code (for users)
-router.post("/validate", authMiddleware, async (req: RequestWithUser, res: Response) => {
+// Validate a discount code (for users and guests)
+router.post("/validate", async (req: express.Request, res: Response) => {
   try {
     console.log("🔍 Validating discount code:", req.body.code);
-    
-    if (!req.user) {
-      res.status(401).json({ message: "Unauthorized: User not found" });
-      return;
-    }
 
     const { code, cartItems, subtotal } = req.body;
 
     if (!code || !cartItems || subtotal === undefined) {
-      res.status(400).json({ 
-        message: "Missing required fields: code, cartItems, and subtotal are required" 
+      res.status(400).json({
+        message: "Missing required fields: code, cartItems, and subtotal are required"
       });
       return;
     }
 
     // Find and validate the discount code
-    const discountCode = await DiscountCode.findOne({ 
+    const discountCode = await DiscountCode.findOne({
       code: code.toUpperCase(),
       isActive: true,
       startDate: { $lte: new Date() },
@@ -270,16 +265,16 @@ router.post("/validate", authMiddleware, async (req: RequestWithUser, res: Respo
     });
 
     if (!discountCode) {
-      res.status(404).json({ 
-        message: "Invalid discount code or expired" 
+      res.status(404).json({
+        message: "Invalid discount code or expired"
       });
       return;
     }
 
     // Check usage limit
     if (discountCode.usageLimit !== null && discountCode.usageCount >= discountCode.usageLimit) {
-      res.status(400).json({ 
-        message: "Discount code usage limit reached" 
+      res.status(400).json({
+        message: "Discount code usage limit reached"
       });
       return;
     }
@@ -298,12 +293,12 @@ router.post("/validate", authMiddleware, async (req: RequestWithUser, res: Respo
       // Check if at least one product in cart is eligible
       const cartProductIds = cartItems.map((item: any) => item.productId.toString());
       const eligibleProductIds = discountCode.applicableProducts.map((id: any) => id.toString());
-      
+
       const hasEligibleProduct = cartProductIds.some((id: string) => eligibleProductIds.includes(id));
-      
+
       if (!hasEligibleProduct) {
-        res.status(400).json({ 
-          message: "Discount code not applicable to items in cart" 
+        res.status(400).json({
+          message: "Discount code not applicable to items in cart"
         });
         return;
       }
@@ -313,11 +308,11 @@ router.post("/validate", authMiddleware, async (req: RequestWithUser, res: Respo
     if (discountCode.excludedProducts.length > 0) {
       const cartProductIds = cartItems.map((item: any) => item.productId.toString());
       const excludedProductIds = discountCode.excludedProducts.map((id: any) => id.toString());
-      
+
       const hasExcludedProduct = cartProductIds.some((id: string) => excludedProductIds.includes(id));
-      
+
       if (hasExcludedProduct) {
-        res.status(400).json({ 
+        res.status(400).json({
           message: "Discount code not applicable to some items in cart"
         });
         return;
@@ -372,26 +367,47 @@ router.post("/validate", authMiddleware, async (req: RequestWithUser, res: Respo
 });
 
 // Apply a discount code to an order (for checkout process)
-router.post("/apply", authMiddleware, async (req: RequestWithUser, res: Response) => {
+router.post("/apply", async (req: express.Request, res: Response) => {
   try {
     console.log("🎁 Applying discount code to checkout:", req.body.code);
-    
-    if (!req.user) {
-      res.status(401).json({ message: "Unauthorized: User not found" });
+
+    const { code, orderId, userId } = req.body;
+
+    // For authenticated requests, check the auth header
+    const authHeader = req.headers.authorization;
+    let authenticatedUserId = null;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const token = authHeader.substring(7);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'default_secret');
+        authenticatedUserId = decoded.userId;
+      } catch (authError) {
+        // Token invalid, continue as guest
+        console.log('🔑 Invalid token, proceeding as guest');
+      }
+    }
+
+    // Use provided userId or authenticated userId
+    const effectiveUserId = userId || authenticatedUserId;
+
+    if (!effectiveUserId) {
+      res.status(400).json({
+        message: "UserId is required for applying discount codes"
+      });
       return;
     }
 
-    const { code, orderId } = req.body;
-
     if (!code || !orderId) {
-      res.status(400).json({ 
-        message: "Missing required fields: code and orderId are required" 
+      res.status(400).json({
+        message: "Missing required fields: code and orderId are required"
       });
       return;
     }
 
     // Find the discount code first to verify it exists
-    const discountCode = await DiscountCode.findOne({ 
+    const discountCode = await DiscountCode.findOne({
       code: code.toUpperCase(),
       isActive: true,
       startDate: { $lte: new Date() },
@@ -399,16 +415,16 @@ router.post("/apply", authMiddleware, async (req: RequestWithUser, res: Response
     });
 
     if (!discountCode) {
-      res.status(404).json({ 
-        message: "Invalid discount code or expired" 
+      res.status(404).json({
+        message: "Invalid discount code or expired"
       });
       return;
     }
 
     // Check usage limit
     if (discountCode.usageLimit !== null && discountCode.usageCount >= discountCode.usageLimit) {
-      res.status(400).json({ 
-        message: "Discount code usage limit reached" 
+      res.status(400).json({
+        message: "Discount code usage limit reached"
       });
       return;
     }
@@ -428,7 +444,7 @@ router.post("/apply", authMiddleware, async (req: RequestWithUser, res: Response
     }
 
     // Verify order belongs to user
-    if (order.user.toString() !== req.user.userId) {
+    if (order.user.toString() !== effectiveUserId) {
       res.status(403).json({ message: "Not authorized to access this order" });
       return;
     }
@@ -446,11 +462,11 @@ router.post("/apply", authMiddleware, async (req: RequestWithUser, res: Response
     if (discountCode.applicableProducts.length > 0) {
       const orderProductIds = order.items.map((item: any) => item.productId._id.toString());
       const eligibleProductIds = discountCode.applicableProducts.map((id: any) => id.toString());
-      
+
       const hasEligibleProduct = orderProductIds.some((id: string) => eligibleProductIds.includes(id));
-      
+
       if (!hasEligibleProduct) {
-        res.status(400).json({ 
+        res.status(400).json({
           message: "Discount code not applicable to items in order"
         });
         return;
@@ -461,12 +477,12 @@ router.post("/apply", authMiddleware, async (req: RequestWithUser, res: Response
     if (discountCode.excludedProducts.length > 0) {
       const orderProductIds = order.items.map((item: any) => item.productId._id.toString());
       const excludedProductIds = discountCode.excludedProducts.map((id: any) => id.toString());
-      
+
       const hasExcludedProduct = orderProductIds.some((id: string) => excludedProductIds.includes(id));
-      
+
       if (hasExcludedProduct) {
-        res.status(400).json({ 
-          message: "Discount code not applicable to some items in order" 
+        res.status(400).json({
+          message: "Discount code not applicable to some items in order"
         });
         return;
       }
