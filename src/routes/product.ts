@@ -70,9 +70,9 @@ router.post("/products", authMiddleware, authorizeRoles("admin"), async (req, re
         if (typeof sizeItem === 'object' && sizeItem !== null) {
           // If it's the correct format (contains valid size enum and stock number)
           if (
-            (sizeItem.size === 'XS' || sizeItem.size === 'S' || sizeItem.size === 'M' || 
-             sizeItem.size === 'L' || sizeItem.size === 'XL' || sizeItem.size === '2XL' || 
-             sizeItem.size === '3XL') && 
+            (sizeItem.size === 'XS' || sizeItem.size === 'S' || sizeItem.size === 'M' ||
+              sizeItem.size === 'L' || sizeItem.size === 'XL' || sizeItem.size === '2XL' ||
+              sizeItem.size === '3XL') &&
             typeof sizeItem.stock === 'number'
           ) {
             return sizeItem;
@@ -107,6 +107,8 @@ router.post("/products", authMiddleware, authorizeRoles("admin"), async (req, re
       superRushOrderDays: Number(req.body.superRushOrderDays) || 3,
       ...(req.body.metaTitle ? { metaTitle: req.body.metaTitle.trim() } : {}),
       ...(req.body.metaDescription ? { metaDescription: req.body.metaDescription.trim() } : {}),
+      ...(req.body.rating !== undefined ? { rating: parseFloat(req.body.rating) } : {}),
+      ...(req.body.totalReviews !== undefined ? { totalReviews: Number(req.body.totalReviews) } : {}),
     };
 
     console.log("Validated product data:", parsedData);
@@ -125,24 +127,24 @@ router.post("/products", authMiddleware, authorizeRoles("admin"), async (req, re
 // ✅ SEARCH PRODUCTS - Must come before /products/:id route
 router.get("/products/search", async (req, res) => {
   try {
-    const { 
-      q: query, 
-      category, 
-      minPrice, 
-      maxPrice, 
-      sortBy = 'relevance', 
-      page = 1, 
-      limit = 12 
+    const {
+      q: query,
+      category,
+      minPrice,
+      maxPrice,
+      sortBy = 'relevance',
+      page = 1,
+      limit = 12
     } = req.query;
 
     if (!query || (query as string).trim().length < 2) {
-      res.json({ 
-        products: [], 
-        total: 0, 
-        page: parseInt(page as string), 
+      res.json({
+        products: [],
+        total: 0,
+        page: parseInt(page as string),
         totalPages: 0,
         suggestions: [],
-        message: 'Search query must be at least 2 characters' 
+        message: 'Search query must be at least 2 characters'
       });
       return;
     }
@@ -163,7 +165,7 @@ router.get("/products/search", async (req, res) => {
 
     // Add category filter
     if (category && category !== 'all') {
-      const categoryDoc = await Category.findOne({ 
+      const categoryDoc = await Category.findOne({
         $or: [
           { name: { $regex: category, $options: 'i' } },
           { _id: category }
@@ -219,8 +221,8 @@ router.get("/products/search", async (req, res) => {
         { categories: { $in: await Category.find({ name: { $regex: query, $options: 'i' } }).select('_id') } }
       ]
     })
-    .select('name')
-    .limit(5);
+      .select('name')
+      .limit(5);
 
     // Get available categories for filters
     const availableCategories = await Category.find({}).select('name _id');
@@ -282,9 +284,9 @@ router.put("/products/:id", authMiddleware, authorizeRoles("admin"), async (req,
       sizesArray = req.body.sizes.map((sizeItem: any) => {
         if (
           typeof sizeItem === 'object' && sizeItem !== null &&
-          (sizeItem.size === 'XS' || sizeItem.size === 'S' || sizeItem.size === 'M' || 
-           sizeItem.size === 'L' || sizeItem.size === 'XL' || sizeItem.size === '2XL' || 
-           sizeItem.size === '3XL') && 
+          (sizeItem.size === 'XS' || sizeItem.size === 'S' || sizeItem.size === 'M' ||
+            sizeItem.size === 'L' || sizeItem.size === 'XL' || sizeItem.size === '2XL' ||
+            sizeItem.size === '3XL') &&
           typeof sizeItem.stock === 'number'
         ) {
           return sizeItem;
@@ -357,6 +359,8 @@ router.put("/products/:id", authMiddleware, authorizeRoles("admin"), async (req,
       ...(req.body.superRushOrderDays !== undefined ? { superRushOrderDays: Number(req.body.superRushOrderDays) } : {}),
       ...(req.body.metaTitle !== undefined ? { metaTitle: req.body.metaTitle.trim() } : {}),
       ...(req.body.metaDescription !== undefined ? { metaDescription: req.body.metaDescription.trim() } : {}),
+      ...(req.body.rating !== undefined ? { rating: parseFloat(req.body.rating) } : {}),
+      ...(req.body.totalReviews !== undefined ? { totalReviews: Number(req.body.totalReviews) } : {}),
     };
 
     const validatedProduct = ProductSchema.parse(updatedBody);
