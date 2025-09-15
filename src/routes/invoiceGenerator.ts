@@ -47,6 +47,7 @@ const invoiceSchema = z.object({
   // Order reference fields
   orderId: z.string().optional(),
   order: z.string().optional(), // MongoDB ObjectId as string
+  purchaseOrderNumber: z.string().optional(),
   status: z.enum(['draft', 'sent', 'paid', 'overdue', 'cancelled']).optional(),
   // Conversion tracking
   convertedFrom: z.string().optional(), // MongoDB ObjectId as string
@@ -238,6 +239,11 @@ router.post('/', async (req: Request, res: Response) => {
         );
 
         if (updatedOrder) {
+          // Update invoice with purchase order number from the order if not already set
+          if (updatedOrder.purchaseOrderNumber && !invoice.purchaseOrderNumber) {
+            invoice.purchaseOrderNumber = updatedOrder.purchaseOrderNumber;
+            await invoice.save();
+          }
           console.log(`Invoice ${invoice.invoiceNumber} linked to order ${updatedOrder.order_id}`);
         } else {
           console.warn(`Order not found for linking with invoice ${invoice.invoiceNumber}`);
@@ -551,6 +557,7 @@ router.get('/order/:orderId', async (req: Request, res: Response) => {
       status: order.status,
       date: order.createdAt,
       hasInvoice: !!order.invoice,
+      purchaseOrderNumber: order.purchaseOrderNumber,
       existingInvoice: order.invoice ? {
         invoiceNumber: (order.invoice as any).invoiceNumber,
         status: (order.invoice as any).status

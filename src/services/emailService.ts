@@ -66,6 +66,7 @@ interface Order {
   name?: string; // Added for compatibility
   user?: string; // Added for compatibility
   amount?: number; // Added for compatibility
+  purchaseOrderNumber?: string; // Customer's Purchase Order number
 }
 
 interface EmailTemplate {
@@ -335,6 +336,7 @@ class EmailService {
               <div>
                 <div class="invoice-number">INVOICE #${orderNumber}</div>
                 <div style="color: #666; margin-top: 5px;">Date: ${date}</div>
+                ${order.purchaseOrderNumber ? `<div style="color: #666; margin-top: 5px;"><strong>Purchase Order No.:</strong> ${order.purchaseOrderNumber}</div>` : ''}
                 <div style="margin-top: 10px;">
                   <span class="status-badge">${status.toUpperCase()}</span>
                 </div>

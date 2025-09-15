@@ -42,6 +42,7 @@ export interface IInvoice extends Document {
   // Order reference
   orderId?: string; // Reference to the order ID
   order?: mongoose.Schema.Types.ObjectId; // Reference to the Order document
+  purchaseOrderNumber?: string; // Customer's Purchase Order number
   // Conversion tracking
   convertedFrom?: mongoose.Schema.Types.ObjectId; // Reference to proforma invoice if converted
   convertedTo?: mongoose.Schema.Types.ObjectId; // Reference to tax invoice if converted
@@ -147,7 +148,7 @@ const InvoiceSchema = new Schema<IInvoice>({
     type: [InvoiceItemSchema],
     required: true,
     validate: {
-      validator: function(items: IInvoiceItem[]) {
+      validator: function (items: IInvoiceItem[]) {
         return items.length > 0;
       },
       message: 'Invoice must have at least one item'
@@ -240,6 +241,11 @@ const InvoiceSchema = new Schema<IInvoice>({
     ref: 'Order',
     index: true // Add index for faster queries
   },
+  purchaseOrderNumber: {
+    type: String,
+    trim: true,
+    index: true // Add index for faster queries
+  },
   status: {
     type: String,
     required: true,
@@ -261,13 +267,9 @@ const InvoiceSchema = new Schema<IInvoice>({
   timestamps: true
 });
 
-// Index for faster queries
-InvoiceSchema.index({ invoiceNumber: 1 });
 InvoiceSchema.index({ customerName: 1 });
 InvoiceSchema.index({ date: -1 });
 InvoiceSchema.index({ status: 1 });
 InvoiceSchema.index({ invoiceType: 1 });
-InvoiceSchema.index({ convertedFrom: 1 });
-InvoiceSchema.index({ convertedTo: 1 });
 
 export const Invoice = mongoose.models.Invoice || mongoose.model<IInvoice>('Invoice', InvoiceSchema);
