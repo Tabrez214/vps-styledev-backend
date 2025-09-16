@@ -28,6 +28,9 @@ import emailRouter from './routes/email';
 import invoiceRouter from './routes/invoiceGenerator';
 import reviewRouter from './routes/review';
 import designSubmissionRouter from './routes/designSubmission';
+import feedRouter from './routes/feed';
+// import emailCampaignRoutes from './routes/emailCampaign';
+// import CronService from './services/cronService';
 import { errorHandler } from './middleware/errorMiddleware';
 dotenv.config();
 
@@ -51,6 +54,8 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
 ];
+
+console.log('✅ 2. CORS origins defined');
 
 // Middleware setup
 app.use(cors({
@@ -173,10 +178,65 @@ app.get('/uploads/health', (req, res) => {
   });
 });
 
-// MongoDB connection
-mongoose.connect(process.env.MONGODB_URI || "")
-  .then(() => console.log("Connected to MongoDB"))
-  .catch((err) => console.error("MongoDB connection error:", err));
+// MongoDB connection setup (completely non-blocking)
+function connectToMongoDB() {
+  if (!process.env.MONGODB_URI) {
+    console.error('❌ MONGODB_URI is not set in environment variables');
+    console.error('⚠️  Server will start without database connection');
+    return;
+  }
+
+  console.log('🔄 Attempting to connect to MongoDB...');
+
+  // Start connection attempt asynchronously
+  setTimeout(() => {
+    mongoose.connect(process.env.MONGODB_URI!, {
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+      bufferCommands: false
+    })
+      .then(() => {
+        console.log("✅ Connected to MongoDB");
+        console.log("📊 Database:", mongoose.connection.db?.databaseName || 'Unknown');
+      })
+      .catch((err) => {
+        console.error("❌ MongoDB connection failed:", err.message);
+        if (err.name === 'MongoServerSelectionError') {
+          console.error("💡 Possible solutions:");
+          console.error("   - Check your internet connection");
+          console.error("   - Verify MongoDB Atlas cluster is running");
+          console.error("   - Check if IP address is whitelisted (0.0.0.0/0)");
+          console.error("   - Verify username/password in connection string");
+          console.error("   - Try running: node test_mongodb_connection.js");
+        }
+        console.error("⚠️  Server running without database connection");
+      });
+  }, 100); // Small delay to ensure server starts first
+}
+
+// Handle MongoDB connection events
+mongoose.connection.on('error', (err) => {
+  console.error('❌ MongoDB runtime error:', err.message);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('⚠️  MongoDB disconnected - attempting to reconnect...');
+});
+
+mongoose.connection.on('reconnected', () => {
+  console.log('✅ MongoDB reconnected');
+});
+
+process.on('SIGINT', async () => {
+  console.log('\n🔄 Gracefully shutting down...');
+  try {
+    await mongoose.connection.close();
+    console.log('🔐 MongoDB connection closed.');
+  } catch (err) {
+    console.log('⚠️  Error closing MongoDB connection');
+  }
+  process.exit(0);
+});
 
 // Define the root route
 app.get('/', (req, res) => {
@@ -201,7 +261,7 @@ app.use('/category', categoryRouter)
 app.use('/address', addressRouter)
 
 // Use the payment router for payment-related routes
-app.use('/api/v1/payment', paymentRouter);
+app.use('/api/payment', paymentRouter);
 app.use('/discount-codes', discountRouter);
 
 app.use('/', subscribeRouter);
@@ -219,6 +279,10 @@ app.use('/invoices', invoiceRouter);
 app.use('/api', reviewRouter);
 app.use('/design-challenge', designSubmissionRouter);
 
+// Google Shopping feed route
+app.use('/', feedRouter);
+// app.use('/email-campaigns', emailCampaignRoutes);
+
 // Global error handler - MUST be last middleware
 app.use(errorHandler);
 
@@ -230,9 +294,18 @@ app.use('*', (req, res) => {
   });
 });
 
+// Initialize cron jobs for email campaigns
+// CronService.initializeCronJobs();
+
+// Start MongoDB connection (non-blocking)
+connectToMongoDB();
+
 // Start server
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log(`Static files served from: ${uploadsDir}`);
+  console.log(`\n🚀 Server running on port ${PORT}`);
+  console.log(`📁 Static files served from: ${uploadsDir}`);
+  console.log(`🌐 Server URL: http://localhost:${PORT}`);
+  console.log(`ℹ️  MongoDB connection will appear above once established`);
+  console.log(`ℹ️  To test MongoDB: node test_mongodb_connection.js\n`);
 });
