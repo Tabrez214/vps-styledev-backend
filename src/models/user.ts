@@ -1,4 +1,4 @@
-import mongoose, {Document, Schema} from "mongoose";
+import mongoose, { Document, Schema } from "mongoose";
 import bcrypt from 'bcrypt';
 
 interface ActivityLog {
@@ -9,7 +9,7 @@ interface ActivityLog {
 
 // The IUser Interface - Updated with additional profile fields
 export interface IUser extends Document {
-  _id: string; 
+  _id: string;
   username: string;
   email: string;
   password: string;
@@ -24,6 +24,7 @@ export interface IUser extends Document {
     country: string;
   };
   isVerified: boolean;
+  isGuest: boolean;
   provider?: 'local' | 'google' | 'facebook';
   comparePassword(candidatePassword: string): Promise<Boolean>;
   consent: boolean;
@@ -48,33 +49,38 @@ export interface IUser extends Document {
 
 //The Mongoose Schema - Updated with additional fields
 const UserSchema: Schema = new Schema({
-  username: { 
-    type: String, 
-    required: true, 
+  username: {
+    type: String,
+    required: function (this: IUser) {
+      return !this.isGuest; // Only required for non-guest users
+    },
     unique: true,
+    sparse: true, // Allow multiple null values
     trim: true,
     minlength: 3,
     maxlength: 30
   },
-  email: { 
-    type: String, 
-    required: true, 
+  email: {
+    type: String,
+    required: true,
     unique: true,
     trim: true,
     lowercase: true
   },
-  password: { 
-    type: String, 
-    required: true,
+  password: {
+    type: String,
+    required: function (this: IUser) {
+      return !this.isGuest; // Only required for non-guest users
+    },
     minlength: 6
   },
-  role: { 
-    type: String, 
-    enum: ['user', 'admin'], 
-    default: 'user' 
+  role: {
+    type: String,
+    enum: ['user', 'admin'],
+    default: 'user'
   },
-  name: { 
-    type: String, 
+  name: {
+    type: String,
     required: true,
     trim: true,
     maxlength: 100
@@ -83,7 +89,7 @@ const UserSchema: Schema = new Schema({
     type: String,
     trim: true,
     validate: {
-      validator: function(v: string) {
+      validator: function (v: string) {
         return !v || /^\+?[\d\s\-\(\)]+$/.test(v);
       },
       message: 'Invalid phone number format'
@@ -96,22 +102,26 @@ const UserSchema: Schema = new Schema({
     zipCode: { type: String, trim: true },
     country: { type: String, trim: true, default: 'India' }
   },
-  isVerified: { 
-    type: Boolean, 
-    default: false 
+  isVerified: {
+    type: Boolean,
+    default: false
   },
-  provider: { 
-    type: String, 
-    enum: ['local', 'google', 'facebook'], 
-    default: 'local' 
+  isGuest: {
+    type: Boolean,
+    default: false
   },
-  consent: { 
-    type: Boolean, 
-    default: false 
+  provider: {
+    type: String,
+    enum: ['local', 'google', 'facebook'],
+    default: 'local'
   },
-  newsletterSubscribed: { 
-    type: Boolean, 
-    default: false 
+  consent: {
+    type: Boolean,
+    default: false
+  },
+  newsletterSubscribed: {
+    type: Boolean,
+    default: false
   },
   avatar: {
     type: String, // URL to profile picture
@@ -140,15 +150,14 @@ const UserSchema: Schema = new Schema({
   timestamps: true
 });
 
-// Indexes for efficient queries
-UserSchema.index({ email: 1 });
-UserSchema.index({ username: 1 });
+// Indexes for efficient queries - only for non-unique fields
 UserSchema.index({ role: 1 });
 UserSchema.index({ isVerified: 1 });
+UserSchema.index({ isGuest: 1 });
 
-//Hashing password before save
+//Hashing password before save - only for non-guest users with password
 UserSchema.pre<IUser>('save', async function (next) {
-  if(!this.isModified('password')) return next();
+  if (!this.isModified('password') || !this.password || this.isGuest) return next();
   try {
     const salt = await bcrypt.genSalt(12);
     const hash = await bcrypt.hash(this.password, salt);
@@ -170,14 +179,14 @@ UserSchema.methods.comparePassword = async function (candidatePassword: string):
 };
 
 // Virtual for full address
-UserSchema.virtual('fullAddress').get(function(this: IUser) {
+UserSchema.virtual('fullAddress').get(function (this: IUser) {
   if (!this.address) return '';
   const { street, city, state, zipCode, country } = this.address;
   return [street, city, state, zipCode, country].filter(Boolean).join(', ');
 });
 
 // Method to get safe user data (without password)
-UserSchema.methods.toSafeObject = function() {
+UserSchema.methods.toSafeObject = function () {
   const userObj = this.toObject();
   delete userObj.password;
   return userObj;

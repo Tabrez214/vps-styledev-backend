@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import validator from 'validator';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 import User from '../models/user';
 import { sendOTPEmail } from '../lib/emailService';
 import { generateOTP, storeOTP, verifyOTP } from '../lib/otpService';
@@ -8,6 +9,8 @@ import { generateToken, refreshAccessToken, revokeRefreshToken, generateTokenPai
 import { UserSchema } from '../schemas/user';
 import { tempUserStore } from '../lib/tempUserStore';
 import { sendPasswordResetEmail } from '../lib/emailService';
+import EmailCampaignService from '../services/emailCampaignService';
+import { GuestService } from '../services/guestService';
 
 const router = Router();
 
@@ -17,10 +20,10 @@ router.post('/register', async (req: Request, res: Response) => {
     // Validate request body using Zod
     const parsedResult = UserSchema.safeParse(req.body);
     if (!parsedResult.success) {
-      res.status(400).json({ 
+      res.status(400).json({
         error: "Validation failed",
         message: "Invalid input data",
-        details: parsedResult.error.errors 
+        details: parsedResult.error.errors
       });
       return;
     }
@@ -30,7 +33,7 @@ router.post('/register', async (req: Request, res: Response) => {
     // Check if email exists in database (verified users)
     const existingEmail = await User.findOne({ email });
     if (existingEmail) {
-      res.status(400).json({ 
+      res.status(400).json({
         error: "Email exists",
         message: "Email already registered"
       });
@@ -40,7 +43,7 @@ router.post('/register', async (req: Request, res: Response) => {
     // Check if username exists in database (verified users)
     const existingUsername = await User.findOne({ username });
     if (existingUsername) {
-      res.status(400).json({ 
+      res.status(400).json({
         error: "Username exists",
         message: "Username already taken"
       });
@@ -73,7 +76,7 @@ router.post('/register', async (req: Request, res: Response) => {
       // If email fails to send, remove from temp storage
       tempUserStore.delete(email);
       console.error('Failed to send OTP email to:', email);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Email service error",
         message: "Failed to send verification email. Please try again."
       });
@@ -87,7 +90,7 @@ router.post('/register', async (req: Request, res: Response) => {
       storedInTemp: true
     });
 
-    res.status(200).json({ 
+    res.status(200).json({
       message: "Registration initiated. Please check your email for verification code.",
       email: email,
       requiresVerification: true
@@ -95,7 +98,7 @@ router.post('/register', async (req: Request, res: Response) => {
     return;
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: "Registration failed",
       message: "Failed to initiate registration",
       details: error instanceof Error ? error.message : "Unknown error"
@@ -113,7 +116,7 @@ router.post('/login', async (req: Request, res: Response) => {
 
     // Validate input
     if (!email || !password) {
-      res.status(400).json({ 
+      res.status(400).json({
         error: "Missing credentials",
         message: "Please provide both email and password"
       });
@@ -122,7 +125,7 @@ router.post('/login', async (req: Request, res: Response) => {
 
     // Validate email format
     if (!validator.isEmail(email)) {
-      res.status(400).json({ 
+      res.status(400).json({
         error: "Invalid email",
         message: "Please enter a valid email address"
       });
@@ -133,7 +136,7 @@ router.post('/login', async (req: Request, res: Response) => {
     const user = await User.findOne({ email });
     if (!user) {
       console.log('Login attempt: User not found for email:', email);
-      res.status(400).json({ 
+      res.status(400).json({
         error: "User not found",
         message: "No account found with this email address"
       });
@@ -143,7 +146,7 @@ router.post('/login', async (req: Request, res: Response) => {
     // Check if user is verified
     if (!user.isVerified) {
       console.log('Login attempt: User not verified:', email);
-      res.status(400).json({ 
+      res.status(400).json({
         error: "Email not verified",
         message: "Please verify your email address before signing in"
       });
@@ -161,7 +164,7 @@ router.post('/login', async (req: Request, res: Response) => {
 
     if (!isPasswordValid) {
       console.log('Login attempt: Invalid password for user:', email);
-      res.status(400).json({ 
+      res.status(400).json({
         error: "Invalid password",
         message: "Incorrect password"
       });
@@ -193,7 +196,7 @@ router.post('/login', async (req: Request, res: Response) => {
     return;
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: "Server error",
       message: "An error occurred during login. Please try again."
     });
@@ -256,7 +259,20 @@ router.post('/verify-otp', async (req: Request, res: Response) => {
       username: user.username
     });
 
-    res.status(200).json({ 
+    // Schedule welcome email campaign (welcome email + promo follow-up)
+    try {
+      await EmailCampaignService.scheduleWelcomeEmail(
+        user._id.toString(),
+        user.email,
+        user.username
+      );
+      console.log('Welcome email campaign scheduled for:', user.email);
+    } catch (error) {
+      console.error('Error scheduling welcome email campaign:', error);
+      // Don't fail the registration if email scheduling fails
+    }
+
+    res.status(200).json({
       message: "Email verified successfully and account created",
       token,
       user: {
@@ -337,7 +353,7 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
 
     // Validate email
     if (!email) {
-      res.status(400).json({ 
+      res.status(400).json({
         error: "Missing email",
         message: "Please provide an email address"
       });
@@ -345,7 +361,7 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
     }
 
     if (!validator.isEmail(email)) {
-      res.status(400).json({ 
+      res.status(400).json({
         error: "Invalid email",
         message: "Please enter a valid email address"
       });
@@ -356,7 +372,7 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
     const user = await User.findOne({ email });
     if (!user) {
       // For security, don't reveal if user exists or not
-      res.status(200).json({ 
+      res.status(200).json({
         message: "If an account with this email exists, you will receive a password reset email shortly."
       });
       return;
@@ -364,7 +380,7 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
 
     // Check if user is verified
     if (!user.isVerified) {
-      res.status(400).json({ 
+      res.status(400).json({
         error: "Email not verified",
         message: "Please verify your email address first before resetting password"
       });
@@ -379,7 +395,7 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
     const emailSent = await sendPasswordResetEmail(email, otp);
     if (!emailSent) {
       console.error('Failed to send password reset email to:', email);
-      res.status(500).json({ 
+      res.status(500).json({
         error: "Email service error",
         message: "Failed to send password reset email. Please try again later."
       });
@@ -392,13 +408,13 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
       timestamp: new Date()
     });
 
-    res.status(200).json({ 
+    res.status(200).json({
       message: "If an account with this email exists, you will receive a password reset email shortly."
     });
 
   } catch (error) {
     console.error('Forgot password error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: "Server error",
       message: "An error occurred while processing your request. Please try again."
     });
@@ -412,7 +428,7 @@ router.post('/reset-password', async (req: Request, res: Response) => {
 
     // Validate input
     if (!email || !otp || !newPassword) {
-      res.status(400).json({ 
+      res.status(400).json({
         error: "Missing fields",
         message: "Please provide email, OTP, and new password"
       });
@@ -420,7 +436,7 @@ router.post('/reset-password', async (req: Request, res: Response) => {
     }
 
     if (!validator.isEmail(email)) {
-      res.status(400).json({ 
+      res.status(400).json({
         error: "Invalid email",
         message: "Please enter a valid email address"
       });
@@ -429,7 +445,7 @@ router.post('/reset-password', async (req: Request, res: Response) => {
 
     // Validate password strength (you can customize this)
     if (newPassword.length < 6) {
-      res.status(400).json({ 
+      res.status(400).json({
         error: "Weak password",
         message: "Password must be at least 6 characters long"
       });
@@ -438,7 +454,7 @@ router.post('/reset-password', async (req: Request, res: Response) => {
 
     // Verify OTP for password reset
     if (!verifyOTP(`reset_${email}`, otp)) {
-      res.status(400).json({ 
+      res.status(400).json({
         error: "Invalid OTP",
         message: "Invalid or expired verification code"
       });
@@ -448,7 +464,7 @@ router.post('/reset-password', async (req: Request, res: Response) => {
     // Find user
     const user = await User.findOne({ email });
     if (!user) {
-      res.status(404).json({ 
+      res.status(404).json({
         error: "User not found",
         message: "No account found with this email address"
       });
@@ -465,13 +481,13 @@ router.post('/reset-password', async (req: Request, res: Response) => {
       timestamp: new Date()
     });
 
-    res.status(200).json({ 
+    res.status(200).json({
       message: "Password reset successful. You can now login with your new password."
     });
 
   } catch (error) {
     console.error('Reset password error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: "Server error",
       message: "An error occurred while resetting your password. Please try again."
     });
@@ -484,7 +500,7 @@ router.post('/verify-reset-otp', async (req: Request, res: Response) => {
     const { email, otp } = req.body;
 
     if (!email || !otp) {
-      res.status(400).json({ 
+      res.status(400).json({
         error: "Missing fields",
         message: "Please provide both email and OTP"
       });
@@ -492,7 +508,7 @@ router.post('/verify-reset-otp', async (req: Request, res: Response) => {
     }
 
     if (!validator.isEmail(email)) {
-      res.status(400).json({ 
+      res.status(400).json({
         error: "Invalid email",
         message: "Please enter a valid email address"
       });
@@ -501,7 +517,7 @@ router.post('/verify-reset-otp', async (req: Request, res: Response) => {
 
     // Verify OTP
     if (!verifyOTP(`reset_${email}`, otp)) {
-      res.status(400).json({ 
+      res.status(400).json({
         error: "Invalid OTP",
         message: "Invalid or expired verification code"
       });
@@ -511,20 +527,20 @@ router.post('/verify-reset-otp', async (req: Request, res: Response) => {
     // Check if user exists (additional security)
     const user = await User.findOne({ email });
     if (!user) {
-      res.status(404).json({ 
+      res.status(404).json({
         error: "User not found",
         message: "No account found with this email address"
       });
       return;
     }
 
-    res.status(200).json({ 
+    res.status(200).json({
       message: "OTP verified successfully. You can now reset your password."
     });
 
   } catch (error) {
     console.error('Verify reset OTP error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: "Server error",
       message: "An error occurred while verifying OTP. Please try again."
     });
@@ -535,7 +551,7 @@ router.post('/verify-reset-otp', async (req: Request, res: Response) => {
 router.post('/refresh-token', async (req: Request, res: Response) => {
   try {
     const { refreshToken } = req.body;
-    
+
     if (!refreshToken) {
       res.status(400).json({
         error: "Missing token",
@@ -543,10 +559,10 @@ router.post('/refresh-token', async (req: Request, res: Response) => {
       });
       return;
     }
-    
+
     // Attempt to refresh the access token
     const { accessToken } = await refreshAccessToken(refreshToken);
-    
+
     res.json({
       message: "Token refreshed successfully",
       accessToken
@@ -564,12 +580,12 @@ router.post('/refresh-token', async (req: Request, res: Response) => {
 router.post('/logout', async (req: Request, res: Response) => {
   try {
     const { refreshToken } = req.body;
-    
+
     if (refreshToken) {
       // Revoke the refresh token if provided
       await revokeRefreshToken(refreshToken);
     }
-    
+
     res.json({
       message: "Logged out successfully"
     });
@@ -579,6 +595,184 @@ router.post('/logout', async (req: Request, res: Response) => {
       error: "Logout failed",
       message: "An error occurred during logout"
     });
+  }
+});
+
+// Claim guest account - Convert guest user to regular user
+router.post('/claim-account', async (req: Request, res: Response) => {
+  try {
+    const { email, password, guestToken, username } = req.body;
+
+    // Validate required fields
+    if (!email || !password || !guestToken) {
+      res.status(400).json({
+        error: "Missing required fields",
+        message: "Email, password, and guest token are required"
+      });
+      return;
+    }
+
+    // Validate email format
+    if (!validator.isEmail(email)) {
+      res.status(400).json({
+        error: "Invalid email",
+        message: "Please enter a valid email address"
+      });
+      return;
+    }
+
+    // Validate password strength
+    if (password.length < 6) {
+      res.status(400).json({
+        error: "Weak password",
+        message: "Password must be at least 6 characters long"
+      });
+      return;
+    }
+
+    // Verify guest token and get user ID
+    let userId;
+    try {
+      const decoded = jwt.verify(guestToken, process.env.JWT_SECRET!) as any;
+      userId = decoded.userId;
+
+      // Check if it's a guest token
+      if (decoded.type !== 'guest') {
+        res.status(401).json({
+          error: "Invalid token type",
+          message: "Token is not a valid guest token"
+        });
+        return;
+      }
+    } catch (error) {
+      res.status(401).json({
+        error: "Invalid token",
+        message: "Guest token is invalid or expired"
+      });
+      return;
+    }
+
+    // Find the guest user
+    const guestUser = await User.findById(userId);
+    if (!guestUser || !guestUser.isGuest) {
+      res.status(404).json({
+        error: "Guest user not found",
+        message: "Invalid guest user or account already claimed"
+      });
+      return;
+    }
+
+    // Verify email matches
+    if (guestUser.email.toLowerCase() !== email.toLowerCase()) {
+      res.status(400).json({
+        error: "Email mismatch",
+        message: "Email does not match guest account"
+      });
+      return;
+    }
+
+    // Check if regular user with this email already exists
+    const existingRegularUser = await User.findOne({
+      email: email.toLowerCase(),
+      isGuest: false
+    });
+    if (existingRegularUser) {
+      res.status(400).json({
+        error: "Email already exists",
+        message: "An account with this email already exists"
+      });
+      return;
+    }
+
+    // Claim the account using GuestService
+    try {
+      const claimedUser = await GuestService.claimGuestAccount(userId, password, username);
+
+      // Generate new tokens for the claimed account
+      const { accessToken, refreshToken } = await generateTokenPair(
+        claimedUser._id.toString(),
+        claimedUser.role,
+        claimedUser.consent,
+        req.headers['user-agent'],
+        req.ip
+      );
+
+      console.log('✅ Guest account claimed successfully:', {
+        email: claimedUser.email,
+        userId: claimedUser._id,
+        username: claimedUser.username
+      });
+
+      res.status(200).json({
+        success: true,
+        message: "Account claimed successfully! You can now access all your order history.",
+        user: {
+          id: claimedUser._id,
+          username: claimedUser.username,
+          email: claimedUser.email,
+          role: claimedUser.role,
+          name: claimedUser.name
+        },
+        accessToken,
+        refreshToken,
+        token: accessToken // For backward compatibility
+      });
+      return;
+    } catch (claimError) {
+      console.error('❌ Error claiming guest account:', claimError);
+      res.status(500).json({
+        error: "Claim failed",
+        message: "Failed to claim guest account. Please try again."
+      });
+      return;
+    }
+  } catch (error) {
+    console.error('❌ Claim account error:', error);
+    res.status(500).json({
+      error: "Server error",
+      message: "Failed to claim account. Please try again."
+    });
+    return;
+  }
+});
+
+// Get guest orders by email (for order lookup without account)
+router.post('/guest-orders', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      res.status(400).json({
+        error: "Missing email",
+        message: "Email is required"
+      });
+      return;
+    }
+
+    if (!validator.isEmail(email)) {
+      res.status(400).json({
+        error: "Invalid email",
+        message: "Please enter a valid email address"
+      });
+      return;
+    }
+
+    // Get guest orders
+    const orders = await GuestService.getGuestOrdersByEmail(email);
+
+    res.status(200).json({
+      success: true,
+      orders: orders,
+      message: orders.length > 0 ? `Found ${orders.length} orders` : "No orders found for this email"
+    });
+    return;
+  } catch (error) {
+    console.error('❌ Guest orders lookup error:', error);
+    res.status(500).json({
+      error: "Server error",
+      message: "Failed to lookup guest orders. Please try again."
+    });
+    return;
   }
 });
 
