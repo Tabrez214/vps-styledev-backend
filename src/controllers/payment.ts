@@ -234,13 +234,24 @@ export const checkout = async (req: Request, res: Response) => {
 // Express Checkout - supports both authenticated and guest users
 export const expressCheckout = async (req: Request, res: Response) => {
   try {
+    console.log('🚀 Express checkout request body:', {
+      hasAddress: !!req.body.address,
+      hasBillingAddress: !!req.body.billingAddress,
+      hasGuestInfo: !!req.body.guestInfo,
+      addressData: req.body.address,
+      billingAddressData: req.body.billingAddress,
+      guestInfoData: req.body.guestInfo
+    });
+
     const {
       amount,
       items,
       guestInfo, // { email, phone, name } - for guest checkout
       userId, // Optional - if user is logged in
       discountCode,
-      designOrder
+      designOrder,
+      address, // Add address from request body
+      billingAddress // Add billing address from request body
     } = req.body;
 
     let finalUserId = userId;
@@ -367,8 +378,18 @@ export const expressCheckout = async (req: Request, res: Response) => {
       }
     }
 
-    // Create temporary address for express checkout
-    const tempAddress = {
+    // Use actual address data from frontend or create temporary address as fallback
+    const { address: frontendAddress } = req.body;
+    const tempAddress = frontendAddress ? {
+      email: frontendAddress.email || guestInfo?.email || 'express@checkout.com',
+      phone: frontendAddress.phone || guestInfo?.phone || '',
+      name: frontendAddress.name || guestInfo?.name || 'Express Checkout User',
+      street: frontendAddress.street || 'To be updated from payment gateway',
+      city: frontendAddress.city || 'To be updated',
+      state: frontendAddress.state || 'To be updated',
+      zipCode: frontendAddress.zipCode || 'To be updated',
+      country: frontendAddress.country || 'India'
+    } : {
       email: guestInfo?.email || 'express@checkout.com',
       phone: guestInfo?.phone || '',
       name: guestInfo?.name || 'Express Checkout User',
@@ -522,7 +543,10 @@ export const expressCheckout = async (req: Request, res: Response) => {
 export const verification = async (req: Request, res: Response) => {
   try {
     console.log('🔄 Verification request received:', {
-      body: req.body
+      body: req.body,
+      hasBillingAddress: !!req.body.billingAddress,
+      hasShippingAddress: !!req.body.shippingAddress,
+      hasCustomerInfo: !!req.body.customerInfo
     });
 
     const {
@@ -531,7 +555,9 @@ export const verification = async (req: Request, res: Response) => {
       razorpay_signature,
       // Additional data for guest orders
       billingAddress, // From Razorpay response or user input
+      shippingAddress, // From user input
       customerContact, // From Razorpay response
+      customerInfo, // Additional customer info
       isExpressCheckout, // Flag to indicate express checkout
       isDemoPayment // Flag for demo/test payments
     } = req.body;
@@ -630,21 +656,26 @@ export const verification = async (req: Request, res: Response) => {
     }
 
     // Update billing address if provided (for express checkout)
-    if (billingAddress && (order.isExpressCheckout || order.isGuestOrder)) {
+    const addressToUpdate = billingAddress || shippingAddress || customerInfo;
+    if (addressToUpdate && (order.isExpressCheckout || order.isGuestOrder)) {
       order.billingAddress = {
-        name: billingAddress.name || order.billingAddress?.name || (order.user as any)?.name,
-        email: billingAddress.email || customerContact?.email || order.billingAddress?.email || (order.user as any)?.email,
-        phone: billingAddress.phone || customerContact?.contact || order.billingAddress?.phone || (order.user as any)?.phone,
-        street: billingAddress.street || billingAddress.line1 || order.billingAddress?.street || 'Not provided',
-        city: billingAddress.city || order.billingAddress?.city || 'Not provided',
-        state: billingAddress.state || order.billingAddress?.state || 'Not provided',
-        zipCode: billingAddress.zipCode || billingAddress.zipcode || order.billingAddress?.zipCode || 'Not provided',
-        country: billingAddress.country || order.billingAddress?.country || 'India',
-        gstNumber: billingAddress.gstNumber || order.billingAddress?.gstNumber
+        name: addressToUpdate.name || addressToUpdate.fullName || order.billingAddress?.name || (order.user as any)?.name,
+        email: addressToUpdate.email || customerContact?.email || order.billingAddress?.email || (order.user as any)?.email,
+        phone: addressToUpdate.phone || addressToUpdate.phoneNumber || customerContact?.contact || order.billingAddress?.phone || (order.user as any)?.phone,
+        street: addressToUpdate.street || addressToUpdate.streetAddress || addressToUpdate.line1 || order.billingAddress?.street || 'Not provided',
+        city: addressToUpdate.city || order.billingAddress?.city || 'Not provided',
+        state: addressToUpdate.state || order.billingAddress?.state || 'Not provided',
+        zipCode: addressToUpdate.zipCode || addressToUpdate.postalCode || addressToUpdate.zipcode || order.billingAddress?.zipCode || 'Not provided',
+        country: addressToUpdate.country || order.billingAddress?.country || 'India',
+        gstNumber: addressToUpdate.gstNumber || order.billingAddress?.gstNumber
       };
 
       // Also update the main address if it was temporary
-      if (typeof order.address === 'object' && order.address.street === 'To be updated from payment gateway') {
+      if (typeof order.address === 'object' && (
+        order.address.street === 'To be updated from payment gateway' ||
+        order.address.city === 'To be updated' ||
+        order.address.state === 'To be updated'
+      )) {
         order.address = {
           ...order.address,
           name: order.billingAddress.name,
