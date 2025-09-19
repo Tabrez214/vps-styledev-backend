@@ -326,14 +326,21 @@ export const expressCheckout = async (req: Request, res: Response) => {
           });
         } else {
           // Handle regular items within a design order
-          const product = await Product.findById(item.productId);
-          if (product) {
-            const price = product.pricePerItem;
-            orderItems.push({
-              productId: item.productId,
-              quantity: itemQuantity,
-              price: price
-            });
+          // Skip items with invalid productIds (like "design-order")
+          if (item.productId && item.productId !== "design-order" && item.productId.length === 24) {
+            try {
+              const product = await Product.findById(item.productId);
+              if (product) {
+                const price = product.pricePerItem;
+                orderItems.push({
+                  productId: item.productId,
+                  quantity: itemQuantity,
+                  price: price
+                });
+              }
+            } catch (error) {
+              console.log('⚠️ Skipping invalid productId:', item.productId);
+            }
           }
         }
       }
