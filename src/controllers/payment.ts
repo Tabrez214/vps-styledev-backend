@@ -307,17 +307,44 @@ export const expressCheckout = async (req: Request, res: Response) => {
     const orderItems = [];
 
     if (designOrder) {
-      // Handle design order items
-      for (const item of items) {
-        subtotal += item.price * item.quantity;
+      // Handle design order items - use designOrder.totalAmount directly
+      subtotal = designOrder.totalAmount || 0;
 
-        orderItems.push({
-          designId: item.designId,
-          quantity: item.quantity,
-          price: item.price,
-          sizes: item.sizes,
-          designData: item.designData
-        });
+      for (const item of items) {
+        // Validate that we have valid numbers
+        const itemPrice = item.price || 0;
+        const itemQuantity = item.quantity || 0;
+
+        // Only add to orderItems if this is a valid design order item
+        if (item.isDesignOrder) {
+          orderItems.push({
+            designId: item.designId,
+            quantity: itemQuantity,
+            price: itemPrice,
+            sizes: item.sizes,
+            designData: item.designData
+          });
+        } else {
+          // Handle regular items within a design order
+          const product = await Product.findById(item.productId);
+          if (product) {
+            const price = product.pricePerItem;
+            orderItems.push({
+              productId: item.productId,
+              quantity: itemQuantity,
+              price: price
+            });
+          }
+        }
+      }
+
+      // Ensure we have a valid subtotal
+      if (isNaN(subtotal) || subtotal <= 0) {
+        subtotal = items.reduce((sum: number, item: any) => {
+          const price = item.price || 0;
+          const quantity = item.quantity || 0;
+          return sum + (price * quantity);
+        }, 0);
       }
     } else {
       // Handle regular product orders
