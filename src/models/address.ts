@@ -9,6 +9,7 @@ interface IAddress extends Document {
   state: string;
   country: string;
   postalCode: string;
+  gstNumber?: string;
   isDefault: boolean;
   createdAt: Date;
 }
@@ -23,6 +24,12 @@ const AddressSchema = new Schema<IAddress>(
     state: { type: String, required: true },
     country: { type: String, required: true },
     postalCode: { type: String, required: true },
+    gstNumber: { 
+      type: String, 
+      trim: true, 
+      default: '',
+      uppercase: true // Auto-convert to uppercase for GST format (e.g., 27AABCU9603R1ZX)
+    },
     isDefault: { type: Boolean, default: false },
   },
   { timestamps: true }
