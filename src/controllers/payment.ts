@@ -33,6 +33,9 @@ export const checkout = async (req: Request, res: Response) => {
     const { 
       orderId, 
       amount, 
+      subtotal,
+      discountAmount: providedDiscountAmount,
+      couponInfo,
       address, 
       items, 
       userId, 
@@ -110,8 +113,38 @@ export const checkout = async (req: Request, res: Response) => {
       let discountCodeId = null;
       let totalAmount = subtotal;
 
-      // Process discount code if provided
-      if (discountCode) {
+      // Use coupon info from frontend if provided (already validated on address page)
+      if (couponInfo && couponInfo.coupon) {
+        discountAmount = providedDiscountAmount || couponInfo.discountAmount || 0;
+        
+        // Find the discount code for reference
+        const discount = await DiscountCode.findOne({
+          code: couponInfo.coupon.code.toUpperCase(),
+          isActive: true
+        });
+        
+        if (discount) {
+          discountCodeId = discount._id;
+          // Re-validate discount is still valid
+          const isValid = discount.startDate <= new Date() && discount.expiryDate >= new Date();
+          if (!isValid) {
+            // Coupon expired between address and payment - reset discount
+            discountAmount = 0;
+            discountCodeId = null;
+            console.log("Coupon expired during checkout:", couponInfo.coupon.code);
+          } else {
+            // Increment usage count for the discount code
+            await DiscountCode.findByIdAndUpdate(
+              discount._id,
+              { $inc: { usageCount: 1 } }
+            );
+          }
+        }
+        
+        totalAmount = subtotal - discountAmount;
+      } 
+      // Fallback to old discount code processing if no coupon info
+      else if (discountCode) {
         // Find and validate discount code
         const discount = await DiscountCode.findOne({
           code: discountCode.toUpperCase(),

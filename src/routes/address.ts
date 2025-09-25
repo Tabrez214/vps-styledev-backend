@@ -14,7 +14,7 @@ router.post("/", authMiddleware, async (req: RequestWithUser, res: Response) => 
       res.status(400).json({ error: validationResult.error.errors });
       return;
     }
-    const { fullName, phoneNumber, streetAddress, city, state, country, postalCode, isDefault } = validationResult.data;
+    const { fullName, phoneNumber, streetAddress, city, state, country, postalCode, gstNumber, isDefault } = validationResult.data;
     if (!req.user) {
       res.status(401).json({ error: "Unauthorized" });
       return;
@@ -35,6 +35,7 @@ router.post("/", authMiddleware, async (req: RequestWithUser, res: Response) => 
       state,
       country,
       postalCode,
+      gstNumber,
       isDefault,
     });
 
@@ -62,7 +63,7 @@ router.get("/", authMiddleware, async (req: RequestWithUser, res: Response) => {
 // Update an address
 router.put("/:id", authMiddleware, async (req: RequestWithUser, res: Response) => {
   try {
-    const { fullName, phoneNumber, streetAddress, city, state, country, postalCode, isDefault } = req.body;
+    const { fullName, phoneNumber, streetAddress, city, state, country, postalCode, gstNumber, isDefault } = req.body;
     if (!req.user) {
       res.status(401).json({ error: "Unauthorized" });
       return;
@@ -77,7 +78,7 @@ router.put("/:id", authMiddleware, async (req: RequestWithUser, res: Response) =
 
     const updatedAddress = await Address.findOneAndUpdate(
       { _id: addressId, user: userId },
-      { fullName, phoneNumber, streetAddress, city, state, country, postalCode, isDefault },
+      { fullName, phoneNumber, streetAddress, city, state, country, postalCode, gstNumber, isDefault },
       { new: true }
     );
 
