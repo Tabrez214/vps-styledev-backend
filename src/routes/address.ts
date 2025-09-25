@@ -9,7 +9,13 @@ const router = express.Router();
 // Add a new address
 router.post("/", authMiddleware, async (req: RequestWithUser, res: Response) => {
   try {
-    const validationResult = addressSchema.safeParse(req.body);
+    // Create validation data with user from middleware
+    const validationData = {
+      ...req.body,
+      user: req.user?.userId || ''
+    };
+    
+    const validationResult = addressSchema.safeParse(validationData);
     if (!validationResult.success) {
       res.status(400).json({ error: validationResult.error.errors });
       return;

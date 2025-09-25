@@ -9,6 +9,7 @@ const addressSchema = z.object({
   state: z.string().nonempty("State is required"),
   country: z.string().nonempty("Country is required"),
   postalCode: z.string().nonempty("Postal code is required"),
+  gstNumber: z.string().optional(),
   isDefault: z.boolean().optional(),
   createdAt: z.date().optional(),
 });
