@@ -7,18 +7,41 @@ import Order from "../models/order";
 import Product from "../models/product";
 import DiscountCode from "../models/discount-codes";
 import DesignOrder from "../models/designOrder";
+import User from "../models/user";
 import { GuestService } from "../services/guestService";
+
+// Define interfaces for better type safety
+interface OrderItem {
+  productId?: string;
+  designId?: string;
+  quantity: number;
+  price: number;
+  sizes?: any;
+  designData?: any;
+  isDesignOrder?: boolean;
+}
 
 dotenv.config();
 
 const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || "",
-  key_secret: process.env.RAZORPAY_KEY_SECRET || ""
+  key_id: "rzp_test_Ng4tai9paMhYzq",
+  key_secret: "MOaSHDGOpFb6fJvJN0RdXJQi"
 });
 
 export const checkout = async (req: Request, res: Response) => {
   try {
-    const { orderId, amount, address, items, userId, discountCode, designOrder } = req.body;
+    const { 
+      orderId, 
+      amount, 
+      address, 
+      items, 
+      userId, 
+      discountCode, 
+      designOrder,
+      purchaseOrderNumber,
+      shippingAddress,
+      billingAddress 
+    } = req.body;
 
     let order;
 
@@ -31,9 +54,16 @@ export const checkout = async (req: Request, res: Response) => {
       }
     } else {
       // Create a new order if orderId is not provided
-      if (!amount || !address || !items || !userId) {
+      if (!amount || !address || !userId) {
         return res.status(400).json({
-          message: "Missing required fields: amount, address, items, and userId are required"
+          message: "Missing required fields: amount, address, and userId are required"
+        });
+      }
+
+      // Check if we have either items or designOrder
+      if ((!items || items.length === 0) && !designOrder) {
+        return res.status(400).json({
+          message: "Either items or designOrder is required"
         });
       }
 
@@ -42,18 +72,18 @@ export const checkout = async (req: Request, res: Response) => {
       const orderItems = [];
 
       if (designOrder) {
-        // Handle design order items
-        for (const item of items) {
-          subtotal += item.price * item.quantity;
+        // Handle design order - use the design order data directly
+        subtotal = designOrder.priceBreakdown?.totalPrice || designOrder.totalAmount || amount;
 
-          orderItems.push({
-            designId: item.designId,
-            quantity: item.quantity,
-            price: item.price,
-            sizes: item.sizes,
-            designData: item.designData
-          });
-        }
+        // Create a single order item for the design order
+        orderItems.push({
+          designId: designOrder.designId,
+          quantity: Object.values(designOrder.quantities || {}).reduce((sum: number, qty: any) => sum + (qty || 0), 0),
+          price: subtotal,
+          sizes: designOrder.quantities,
+          designData: designOrder.designInfo,
+          isDesignOrder: true
+        });
       } else {
         // Handle regular product orders
         for (const item of items) {
@@ -132,13 +162,19 @@ export const checkout = async (req: Request, res: Response) => {
         order_id: `order_${Date.now()}`, // Add required order_id field
         user: userId,
         items: orderItems,
-        address: address._id || address,
+        address: shippingAddress || address, // Use shipping address if available, fallback to address
         subtotal: subtotal,
         amount: totalAmount, // Set amount to the final total (with discount if applicable)
         discountCode: discountCodeId,
         discountAmount: discountAmount,
         totalAmount: totalAmount,
-        status: "pending"
+        status: "pending",
+        checkoutType: 'regular' as const,
+        paymentSource: 'cart' as const,
+        // Add purchase order number if provided
+        ...(purchaseOrderNumber && { purchaseOrderNumber: purchaseOrderNumber.trim() }),
+        // Add billing address if different from shipping
+        ...(billingAddress && { billingAddress })
       };
 
       // Add design order data if this is a design order
@@ -152,24 +188,50 @@ export const checkout = async (req: Request, res: Response) => {
 
       // Create DesignOrder record if this is a design order
       if (designOrder) {
+        // Calculate total quantity from quantities object
+        const totalQuantity = Object.values(designOrder.quantities || {}).reduce((sum: number, qty: any) => sum + (qty || 0), 0);
+
+        // Debug user and address data
+        console.log('User data:', (req as any).user);
+        console.log('Address data:', address);
+
+        // Fetch full user data from database to get email
+        const fullUser = await User.findById(userId);
+        console.log('Full user data:', fullUser);
+
+        // Get email from full user data
+        const userEmail = fullUser?.email || '';
+        const addressEmail = address.email || '';
+        const finalEmail = userEmail || addressEmail || 'customer@example.com'; // Fallback email
+
+        console.log('Email resolution:', { userEmail, addressEmail, finalEmail });
+
         const designOrderRecord = new DesignOrder({
           orderNumber: order.order_id,
           designId: designOrder.designId,
           customer: {
-            email: designOrder.customer?.email || address.email,
-            name: designOrder.customer?.name || address.name || address.fullName,
-            address: designOrder.customer?.address || `${address.street || address.address}, ${address.city}, ${address.state} ${address.zipCode || address.postalCode}`,
-            phone: designOrder.customer?.phone || address.phone || address.phoneNumber
+            email: finalEmail,
+            name: (req as any).user?.name || address.fullName || 'Customer',
+            address: `${address.streetAddress || address.street || ''}, ${address.city || ''}, ${address.state || ''} ${address.postalCode || address.zipCode || ''}`,
+            phone: (req as any).user?.phone || address.phoneNumber || address.phone || ''
           },
-          sizes: designOrder.sizes || {},
-          totalQuantity: designOrder.totalQuantity || items.reduce((sum: number, item: any) => sum + item.quantity, 0),
-          priceBreakdown: designOrder.priceBreakdown || {
-            basePrice: subtotal,
+          sizes: designOrder.quantities || {},
+          totalQuantity: totalQuantity,
+          priceBreakdown: {
+            basePrice: designOrder.priceBreakdown?.unitPrice || subtotal / totalQuantity,
             additionalCosts: [],
-            subtotal: subtotal,
+            subtotal: designOrder.priceBreakdown?.totalPrice || designOrder.totalAmount || subtotal,
             tax: 0,
             shipping: 0,
-            total: totalAmount
+            total: designOrder.priceBreakdown?.totalPrice || designOrder.totalAmount || totalAmount
+          },
+          designData: {
+            elements: designOrder.designInfo?.elements || [],
+            selectedShirt: designOrder.designInfo?.shirtInfo || {},
+            printLocations: designOrder.designInfo?.printLocations || {},
+            printType: designOrder.designInfo?.printType || 'screen',
+            productName: designOrder.designInfo?.productName || '',
+            shirtInfo: designOrder.designInfo?.shirtInfo || {}
           },
           status: 'pending',
           paymentStatus: 'pending',
@@ -206,8 +268,18 @@ export const checkout = async (req: Request, res: Response) => {
     await order.save();
 
     // Return the necessary payment details to the frontend
-    return res.status(200).json({
+    const razorpayKey = "rzp_test_Ng4tai9paMhYzq";
+
+    console.log("Payment session created successfully:", {
+      orderId: order.order_id,
+      razorpayOrderId: razorpayOrder.id,
+      amount: order.totalAmount,
+      hasKey: !!razorpayKey
+    });
+
+    const responseData = {
       success: true,
+      message: "Payment session created - ready to open payment gateway",
       order: {
         id: order._id,
         orderId: order.order_id,
@@ -218,9 +290,13 @@ export const checkout = async (req: Request, res: Response) => {
         orderId: razorpayOrder.id,
         amount: amountInPaise,
         currency: "INR",
-        key: process.env.RAZORPAY_KEY_ID
+        key: razorpayKey
       }
-    });
+    };
+
+
+
+    return res.status(200).json(responseData);
   } catch (error) {
     console.error("Checkout error:", error);
     return res.status(500).json({
@@ -494,36 +570,73 @@ export const expressCheckout = async (req: Request, res: Response) => {
     await order.save();
 
     // Create DesignOrder record if this is a design order
-    if (designOrder) {
-      const designOrderRecord = new DesignOrder({
-        orderNumber: order.order_id,
-        designId: designOrder.designId,
-        customer: {
-          email: guestInfo?.email || tempAddress.email,
-          name: guestInfo?.name || tempAddress.name,
-          address: `${tempAddress.street}, ${tempAddress.city}, ${tempAddress.state}`,
-          phone: guestInfo?.phone || tempAddress.phone
-        },
-        sizes: designOrder.sizes || {},
-        totalQuantity: designOrder.totalQuantity || items.reduce((sum: number, item: any) => sum + item.quantity, 0),
-        priceBreakdown: designOrder.priceBreakdown || {
-          basePrice: subtotal,
-          additionalCosts: [],
-          subtotal: subtotal,
-          tax: 0,
-          shipping: 0,
-          total: totalAmount
-        },
-        status: 'pending',
-        paymentStatus: 'pending',
-        metadata: {
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          ipAddress: req.ip
+    if (designOrder && !designOrder.skipDesignOrderRecord) {
+      // Handle temporary design IDs - convert to ObjectId or skip if invalid
+      let validDesignId = null;
+      if (designOrder.designId && designOrder.designId.length === 24) {
+        try {
+          validDesignId = designOrder.designId;
+        } catch (error) {
+          console.log('⚠️ Invalid designId, using fallback:', designOrder.designId);
         }
-      });
+      }
 
-      await designOrderRecord.save();
+      // Skip DesignOrder creation if we don't have a valid designId and it's a temporary design
+      if (!validDesignId && (designOrder.isTemporaryDesign || designOrder.tempDesignReference)) {
+        console.log('⚠️ Skipping DesignOrder creation for temporary design:', designOrder.tempDesignReference || designOrder.designId);
+      } else {
+        // Use a default ObjectId for temporary designs if needed
+        if (!validDesignId) {
+          validDesignId = '000000000000000000000000'; // Default ObjectId for temp designs
+        }
+
+        // Extract design data from order items for manufacturing
+        const designDataForManufacturing = (items as OrderItem[]).find((item: OrderItem) => item.designData)?.designData || designOrder.designData || {};
+
+        const designOrderRecord = new DesignOrder({
+          orderNumber: order.order_id,
+          designId: validDesignId,
+          customer: {
+            email: guestInfo?.email || tempAddress.email,
+            name: guestInfo?.name || tempAddress.name,
+            address: `${tempAddress.street}, ${tempAddress.city}, ${tempAddress.state}`,
+            phone: guestInfo?.phone || tempAddress.phone
+          },
+          sizes: designOrder.sizes || {},
+          totalQuantity: designOrder.totalQuantity || items.reduce((sum: number, item: any) => sum + item.quantity, 0),
+          priceBreakdown: designOrder.priceBreakdown || {
+            basePrice: subtotal || 0,
+            additionalCosts: [],
+            subtotal: subtotal || 0,
+            tax: 0,
+            shipping: 0,
+            total: totalAmount || 0
+          },
+          // Store design data for manufacturing
+          designData: designDataForManufacturing,
+          // Store additional manufacturing info
+          manufacturingInfo: {
+            tempDesignReference: designOrder.tempDesignReference,
+            isTemporaryDesign: designOrder.isTemporaryDesign || true,
+            designInfo: designOrder.designInfo || {},
+            originalDesignId: designOrder.designId
+          },
+          status: 'pending',
+          paymentStatus: 'pending',
+          metadata: {
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            ipAddress: req.ip
+          }
+        });
+
+        try {
+          await designOrderRecord.save();
+        } catch (error) {
+          console.error('⚠️ Failed to create DesignOrder record:', error);
+          // Don't fail the entire checkout if DesignOrder creation fails
+        }
+      }
     }
 
     console.log('✅ Express checkout order created:', {
@@ -549,7 +662,7 @@ export const expressCheckout = async (req: Request, res: Response) => {
         orderId: razorpayOrder.id,
         amount: amountInPaise,
         currency: "INR",
-        key: process.env.RAZORPAY_KEY_ID
+        key: "rzp_test_Ng4tai9paMhYzq"
       },
       // Include user account message if applicable
       ...(userAccountMessage && {

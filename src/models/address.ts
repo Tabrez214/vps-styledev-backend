@@ -28,4 +28,4 @@ const AddressSchema = new Schema<IAddress>(
   { timestamps: true }
 );
 
-export default mongoose.model<IAddress>("Address", AddressSchema);
+export default mongoose.models.Address || mongoose.model<IAddress>("Address", AddressSchema);
