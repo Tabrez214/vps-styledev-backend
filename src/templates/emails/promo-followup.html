@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Special Offer Just for You!</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8fafc;
+            line-height: 1.6;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        .brand {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+        .offer-badge {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 20px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 500;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .greeting {
+            font-size: 24px;
+            font-weight: 600;
+            color: #0c4a6e;
+            margin-bottom: 20px;
+        }
+        .message {
+            font-size: 16px;
+            color: #4a5568;
+            margin-bottom: 30px;
+            line-height: 1.7;
+        }
+        .discount-section {
+            background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%);
+            padding: 40px 30px;
+            border-radius: 16px;
+            text-align: center;
+            margin: 30px 0;
+            color: white;
+        }
+        .discount-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        .discount-code {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 24px;
+            font-weight: bold;
+            letter-spacing: 3px;
+            margin: 20px 0;
+            border: 2px dashed rgba(255, 255, 255, 0.5);
+        }
+        .discount-details {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-top: 15px;
+        }
+        .cta-button {
+            display: inline-block;
+            background: #0284c7;
+            color: white;
+            padding: 15px 40px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+        }
+        .urgency-section {
+            background: #f0f9ff;
+            border-left: 4px solid #0284c7;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .urgency-title {
+            font-weight: 600;
+            color: #0284c7;
+            margin-bottom: 10px;
+        }
+        .urgency-text {
+            color: #4a5568;
+            font-size: 14px;
+        }
+        .products-showcase {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .product-card {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        .product-image {
+            width: 80px;
+            height: 80px;
+            background: #e2e8f0;
+            border-radius: 8px;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+        }
+        .product-title {
+            font-weight: 600;
+            color: #0c4a6e;
+            margin-bottom: 8px;
+        }
+        .product-price {
+            color: #0284c7;
+            font-weight: 600;
+        }
+        .footer {
+            background: #f7fafc;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        .footer-text {
+            font-size: 14px;
+            color: #718096;
+            margin-bottom: 15px;
+        }
+        @media (max-width: 600px) {
+            .products-showcase {
+                grid-template-columns: 1fr;
+            }
+            .email-container {
+                margin: 10px;
+                border-radius: 8px;
+            }
+            .content {
+                padding: 30px 20px;
+            }
+            .discount-section {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="brand">STYLEDEV</div>
+            <div class="offer-badge">🎁 Special Offer Inside!</div>
+        </div>
+        
+        <div class="content">
+            <div class="greeting">Hi {{username}}! 🎉</div>
+            
+            <div class="message">
+                We noticed you joined StyleDev recently but haven't made your first purchase yet. 
+                We'd love to help you get started with a special welcome discount!
+            </div>
+            
+            <div class="discount-section">
+                <div class="discount-title">{{discountPercentage}}% OFF</div>
+                <div style="font-size: 16px; margin-bottom: 20px;">Your First Order</div>
+                
+                <div class="discount-code">{{promoCode}}</div>
+                
+                <div class="discount-details">
+                    Use this code at checkout to get {{discountPercentage}}% off your first order<br>
+                    Valid until: {{expiryDate}}
+                </div>
+            </div>
+            
+            <div style="text-align: center;">
+                <a href="{{shopUrl}}" class="cta-button">Shop Now & Save {{discountPercentage}}%</a>
+            </div>
+            
+            <div class="urgency-section">
+                <div class="urgency-title">⏰ Limited Time Offer</div>
+                <div class="urgency-text">
+                    This exclusive discount expires in {{daysLeft}} days. Don't miss out on this opportunity to create your first custom design at a special price!
+                </div>
+            </div>
+            
+            <div class="products-showcase">
+                <div class="product-card">
+                    <div class="product-image">👕</div>
+                    <div class="product-title">Custom T-Shirts</div>
+                    <div class="product-price">Starting from ₹299</div>
+                </div>
+                <div class="product-card">
+                    <div class="product-image">🎨</div>
+                    <div class="product-title">Design Studio</div>
+                    <div class="product-price">Free to Use</div>
+                </div>
+            </div>
+            
+            <div class="message">
+                <strong>Why Choose StyleDev?</strong><br>
+                ✅ Premium quality materials<br>
+                ✅ Professional printing technology<br>
+                ✅ Fast delivery across India<br>
+                ✅ 100% satisfaction guarantee<br>
+                ✅ Easy-to-use design tools
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{designStudioUrl}}" style="color: #0284c7; text-decoration: none; font-weight: 600;">
+                    Start Creating Your Design →
+                </a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="footer-text">
+                Questions? Our support team is here to help you every step of the way.
+            </div>
+            
+            <div class="footer-text">
+                StyleDev Team<br>
+                <a href="{{unsubscribeUrl}}" style="color: #718096;">Unsubscribe</a> | 
+                <a href="{{supportUrl}}" style="color: #718096;">Contact Support</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

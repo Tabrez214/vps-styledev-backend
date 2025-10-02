@@ -244,7 +244,7 @@ router.put('/submissions/:id/status', authMiddleware, authorizeRoles('admin'), a
 });
 
 // GET route to get submission statistics (admin only)
-router.get('/submissions/stats/overview', authMiddleware, authorizeRoles('admin'), async (req: Request, res: Response) => {
+router.get('/submissions/stats/overview', authMiddleware, authorizeRoles('admin'), async (_req: Request, res: Response) => {
   try {
     const stats = await DesignSubmission.aggregate([
       {

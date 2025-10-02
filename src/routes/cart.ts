@@ -63,7 +63,7 @@ router.post("/add", authMiddleware, async (req: RequestWithUser, res: Response) 
       }
 
       const existingProduct = cart.products.find(
-        (p) => p.product.toString() === item.product && p.size === item.size
+        (p: any) => p.product.toString() === item.product && p.size === item.size
       );
 
       if (existingProduct) {
@@ -110,7 +110,7 @@ router.get('/', authMiddleware, async (req: RequestWithUser, res: Response) => {
     }
 
     const response = {
-      products: cart.products.map((item) => ({
+      products: cart.products.map((item: any) => ({
         productId: (item.product as any)._id,
         productName: (item.product as any).name,
         color: (item.product as any).colors[0].name,
@@ -153,7 +153,7 @@ router.patch("/update", authMiddleware, async (req: RequestWithUser, res: Respon
     }
 
     const productIndex = cart.products.findIndex(
-      (item) => item.product.toString() === productId && item.size === size
+      (item: any) => item.product.toString() === productId && item.size === size
     );
 
     if (productIndex === -1) {
@@ -202,7 +202,7 @@ router.patch("/update", authMiddleware, async (req: RequestWithUser, res: Respon
     cartProduct.totalPrice = product.pricePerItem * quantity;
 
     // Recalculate total amount in the cart
-    cart.totalAmount = cart.products.reduce((sum, item) => sum + item.totalPrice, 0);
+    cart.totalAmount = cart.products.reduce((sum: number, item: any) => sum + item.totalPrice, 0);
 
     await cart.save();
 
@@ -230,8 +230,8 @@ router.delete('/remove/:productId', authMiddleware, async (req: RequestWithUser,
       return;
     }
 
-    cart.products = cart.products.filter(item => item.product.toString() !== productId);
-    cart.totalAmount = cart.products.reduce((sum, item) => sum + item.totalPrice, 0);
+    cart.products = cart.products.filter((item: any) => item.product.toString() !== productId);
+    cart.totalAmount = cart.products.reduce((sum: number, item: any) => sum + item.totalPrice, 0);
 
     await cart.save();
 

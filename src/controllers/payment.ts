@@ -9,14 +9,17 @@ import DiscountCode from "../models/discount-codes";
 import DesignOrder from "../models/designOrder";
 import User from "../models/user";
 import { GuestService } from "../services/guestService";
+import { mapAddressFields, mapPriceFields, StandardAddress } from "../types/standardTypes";
 
 // Define interfaces for better type safety
 interface OrderItem {
   productId?: string;
   designId?: string;
   quantity: number;
-  price: number;
-  sizes?: any;
+  pricePerItem: number;        // Standardized field name (was 'price')
+  totalPrice?: number;         // Add for consistency
+  color: string;               // Add explicit color field
+  size: string;                // Add explicit size field
   designData?: any;
   isDesignOrder?: boolean;
 }
@@ -79,11 +82,14 @@ export const checkout = async (req: Request, res: Response) => {
         subtotal = designOrder.priceBreakdown?.totalPrice || designOrder.totalAmount || amount;
 
         // Create a single order item for the design order
+        const totalQuantity = Object.values(designOrder.quantities || {}).reduce((sum: number, qty: any) => sum + (qty || 0), 0);
         orderItems.push({
           designId: designOrder.designId,
-          quantity: Object.values(designOrder.quantities || {}).reduce((sum: number, qty: any) => sum + (qty || 0), 0),
-          price: subtotal,
-          sizes: designOrder.quantities,
+          quantity: totalQuantity,
+          pricePerItem: totalQuantity > 0 ? subtotal / totalQuantity : subtotal, // Standardized field name
+          totalPrice: subtotal,
+          color: designOrder.designInfo?.selectedShirt?.color || 'Custom',
+          size: 'Mixed', // For design orders with multiple sizes
           designData: designOrder.designInfo,
           isDesignOrder: true
         });
@@ -97,13 +103,17 @@ export const checkout = async (req: Request, res: Response) => {
             });
           }
 
-          const price = product.pricePerItem;
-          subtotal += price * item.quantity;
+          const pricePerItem = product.pricePerItem;
+          const totalPrice = pricePerItem * item.quantity;
+          subtotal += totalPrice;
 
           orderItems.push({
             productId: item.productId,
             quantity: item.quantity,
-            price: price
+            pricePerItem: pricePerItem,    // Standardized field name
+            totalPrice: totalPrice,        // Add for consistency
+            color: item.color || 'Default',
+            size: item.size || 'M'
           });
         }
       }
@@ -189,13 +199,17 @@ export const checkout = async (req: Request, res: Response) => {
         }
       }
 
+      // Standardize address using address mapping utilities
+      const standardizedAddress = mapAddressFields.frontendToBackend(shippingAddress || address);
+      const standardizedBillingAddress = billingAddress ? mapAddressFields.frontendToBackend(billingAddress) : null;
+
       // Create a new order with all required fields
       const orderData: any = {
         name: `Order-${Date.now()}`, // Add required name field
         order_id: `order_${Date.now()}`, // Add required order_id field
         user: userId,
         items: orderItems,
-        address: shippingAddress || address, // Use shipping address if available, fallback to address
+        address: standardizedAddress, // Use standardized address
         subtotal: subtotal,
         amount: totalAmount, // Set amount to the final total (with discount if applicable)
         discountCode: discountCodeId,
@@ -206,8 +220,8 @@ export const checkout = async (req: Request, res: Response) => {
         paymentSource: 'cart' as const,
         // Add purchase order number if provided
         ...(purchaseOrderNumber && { purchaseOrderNumber: purchaseOrderNumber.trim() }),
-        // Add billing address if different from shipping
-        ...(billingAddress && { billingAddress })
+        // Add standardized billing address if different from shipping
+        ...(standardizedBillingAddress && { billingAddress: standardizedBillingAddress })
       };
 
       // Add design order data if this is a design order
@@ -241,6 +255,7 @@ export const checkout = async (req: Request, res: Response) => {
 
         const designOrderRecord = new DesignOrder({
           orderNumber: order.order_id,
+          mainOrderId: order._id, // Enhanced linking: Reference to main order
           designId: designOrder.designId,
           customer: {
             email: finalEmail,
@@ -276,6 +291,11 @@ export const checkout = async (req: Request, res: Response) => {
         });
 
         await designOrderRecord.save();
+        
+        // Enhanced linking: Add design order reference to main order
+        order.linkedDesignOrders = order.linkedDesignOrders || [];
+        order.linkedDesignOrders.push(designOrderRecord._id);
+        await order.save();
       }
     }
 
@@ -420,17 +440,23 @@ export const expressCheckout = async (req: Request, res: Response) => {
       subtotal = designOrder.totalAmount || 0;
 
       for (const item of items) {
-        // Validate that we have valid numbers
-        const itemPrice = item.price || 0;
-        const itemQuantity = item.quantity || 0;
+        // Use standardized item mapping for consistency
+        const standardizedItem = mapPriceFields.standardizeOrderItem({
+          ...item,
+          // Ensure we have valid numbers
+          price: item.price || item.pricePerItem || 0,
+          quantity: item.quantity || 0
+        });
 
         // Only add to orderItems if this is a valid design order item
         if (item.isDesignOrder) {
           orderItems.push({
             designId: item.designId,
-            quantity: itemQuantity,
-            price: itemPrice,
-            sizes: item.sizes,
+            quantity: standardizedItem.quantity,
+            pricePerItem: standardizedItem.pricePerItem,
+            totalPrice: standardizedItem.totalPrice,
+            color: item.designData?.selectedShirt?.color || 'Custom',
+            size: 'Mixed', // For design orders with multiple sizes
             designData: item.designData
           });
         } else {
@@ -440,12 +466,17 @@ export const expressCheckout = async (req: Request, res: Response) => {
             try {
               const product = await Product.findById(item.productId);
               if (product) {
-                const price = product.pricePerItem;
-                orderItems.push({
+                // Use product pricing with standardized fields
+                const standardizedProductItem = mapPriceFields.standardizeOrderItem({
                   productId: item.productId,
-                  quantity: itemQuantity,
-                  price: price
+                  quantity: standardizedItem.quantity,
+                  pricePerItem: product.pricePerItem,
+                  totalPrice: product.pricePerItem * standardizedItem.quantity,
+                  color: item.color || 'Default',
+                  size: item.size || 'M'
                 });
+                
+                orderItems.push(standardizedProductItem);
               }
             } catch (error) {
               console.log('⚠️ Skipping invalid productId:', item.productId);
@@ -463,7 +494,7 @@ export const expressCheckout = async (req: Request, res: Response) => {
         }, 0);
       }
     } else {
-      // Handle regular product orders
+      // Handle regular product orders with standardized mapping
       for (const item of items) {
         const product = await Product.findById(item.productId);
         if (!product) {
@@ -472,14 +503,18 @@ export const expressCheckout = async (req: Request, res: Response) => {
           });
         }
 
-        const price = product.pricePerItem;
-        subtotal += price * item.quantity;
-
-        orderItems.push({
+        // Use standardized item mapping for consistency
+        const standardizedItem = mapPriceFields.standardizeOrderItem({
           productId: item.productId,
           quantity: item.quantity,
-          price: price
+          pricePerItem: product.pricePerItem,
+          totalPrice: product.pricePerItem * item.quantity,
+          color: item.color || 'Default',
+          size: item.size || 'M'
         });
+
+        subtotal += standardizedItem.totalPrice;
+        orderItems.push(standardizedItem);
       }
     }
 
@@ -521,18 +556,34 @@ export const expressCheckout = async (req: Request, res: Response) => {
       }
     }
 
-    // Use actual address data from frontend or create temporary address as fallback
+    // Use standardized address mapping for express checkout
     const { address: frontendAddress } = req.body;
-    const tempAddress = frontendAddress ? {
+    // Enhanced address mapping with support for both regular and express checkout formats
+    const tempAddress = frontendAddress ? mapAddressFields.frontendToBackend({
+      // Support both regular and express checkout address formats
       email: frontendAddress.email || guestInfo?.email || 'express@checkout.com',
-      phone: frontendAddress.phone || guestInfo?.phone || '',
-      name: frontendAddress.name || guestInfo?.name || 'Express Checkout User',
-      street: frontendAddress.street || 'To be updated from payment gateway',
-      city: frontendAddress.city || 'To be updated',
-      state: frontendAddress.state || 'To be updated',
-      zipCode: frontendAddress.zipCode || 'To be updated',
-      country: frontendAddress.country || 'India'
-    } : {
+      phone: frontendAddress.phone || frontendAddress.phoneNumber || guestInfo?.phone || '',
+      name: frontendAddress.name || frontendAddress.fullName || guestInfo?.name || 'Express Checkout User',
+      
+      // Support multiple street address field names
+      street: frontendAddress.street || 
+              frontendAddress.streetAddress || 
+              frontendAddress.address || 
+              frontendAddress.billingAddress || 
+              'To be updated from payment gateway',
+              
+      city: frontendAddress.city || frontendAddress.billingCity || 'To be updated',
+      state: frontendAddress.state || frontendAddress.billingState || 'To be updated',
+      
+      // Support multiple postal code field names  
+      zipCode: frontendAddress.zipCode || 
+               frontendAddress.postalCode || 
+               frontendAddress.billingPostalCode || 
+               'To be updated',
+               
+      country: frontendAddress.country || frontendAddress.billingCountry || 'India',
+      gstNumber: frontendAddress.gstNumber || guestInfo?.gstNumber || ''
+    }) : mapAddressFields.frontendToBackend({
       email: guestInfo?.email || 'express@checkout.com',
       phone: guestInfo?.phone || '',
       name: guestInfo?.name || 'Express Checkout User',
@@ -540,8 +591,9 @@ export const expressCheckout = async (req: Request, res: Response) => {
       city: 'To be updated',
       state: 'To be updated',
       zipCode: 'To be updated',
-      country: 'India'
-    };
+      country: 'India',
+      gstNumber: guestInfo?.gstNumber || ''
+    });
 
     // Generate unique order ID
     const orderIdString = `EXPRESS-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -628,6 +680,7 @@ export const expressCheckout = async (req: Request, res: Response) => {
 
         const designOrderRecord = new DesignOrder({
           orderNumber: order.order_id,
+          mainOrderId: order._id, // Enhanced linking: Reference to main order
           designId: validDesignId,
           customer: {
             email: guestInfo?.email || tempAddress.email,
@@ -665,6 +718,11 @@ export const expressCheckout = async (req: Request, res: Response) => {
 
         try {
           await designOrderRecord.save();
+          
+          // Enhanced linking: Add design order reference to main order
+          order.linkedDesignOrders = order.linkedDesignOrders || [];
+          order.linkedDesignOrders.push(designOrderRecord._id);
+          await order.save();
         } catch (error) {
           console.error('⚠️ Failed to create DesignOrder record:', error);
           // Don't fail the entire checkout if DesignOrder creation fails

@@ -1,6 +1,11 @@
+// routes/contact.js (Updated version with welcome email)
 import express, { Request, Response } from 'express';
 const router = express.Router();
 import ContactForm from '../models/contactForm';
+import EmailService from '../services/emailService';
+
+// Create an instance of EmailService
+const emailService = new EmailService();
 
 // GET route to fetch all contacts with pagination and filtering
 router.get('/', async (req: Request, res: Response) => {
@@ -100,7 +105,7 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// POST route to create new contact
+// POST route to create new contact with welcome email
 router.post('/', async (req: Request, res: Response) => {
   try {
     const { email, name, mobile, description } = req.body;
@@ -133,6 +138,9 @@ router.post('/', async (req: Request, res: Response) => {
       subscribedAt: new Date(),
       source: 'popup',
     });
+
+    // Send welcome email (don't wait for it to complete)
+    emailService.sendWelcomeEmail(email, name);
 
     res.status(201).json({
       success: true,

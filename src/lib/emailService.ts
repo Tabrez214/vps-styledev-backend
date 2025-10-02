@@ -14,6 +14,9 @@ const transporter = emailConfigured ? nodemailer.createTransport({
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD,
   },
+  tls: {
+    rejectUnauthorized: false
+  }
 }) : null;
 
 export const sendOTPEmail = async (email: string, otp: string): Promise<boolean> => {

@@ -143,7 +143,7 @@ router.post('/submit-order', upload.single('fileUpload'), async (req: Request, r
         message: 'Missing required fields',
         required: ['name', 'email', 'tShirtType', 'quantity', 'sizes', 'colorPreference', 'deliveryLocation', 'deliveryDate'],
         missing: missingFields
-      }); 
+      });
       return;
     }
 
@@ -327,6 +327,100 @@ router.get('/orders', async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch orders'
+    });
+  }
+});
+
+// GET /api/invoices/order/:orderId - Get order data formatted for invoice
+router.get('/invoices/order/:orderId', async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await TShirtOrder.findById(orderId);
+
+    if (!order) {
+      res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+      return;
+    }
+
+    // Transform order data to invoice format
+    const invoiceData = {
+      // Order identification
+      orderId: order._id,
+      orderNumber: (order._id as any).toString().slice(-8).toUpperCase(),
+      invoiceNumber: `INV-${(order._id as any).toString().slice(-8).toUpperCase()}`,
+      date: order.createdAt,
+      orderDate: order.createdAt,
+      createdAt: order.createdAt,
+
+      // Customer information
+      customerName: order.name,
+      customerEmail: order.email,
+      customerPhone: order.phone,
+      name: order.name,
+      email: order.email,
+      phone: order.phone,
+
+      // Address information
+      address: order.deliveryLocation,
+      billingAddress: order.deliveryLocation,
+      shippingAddress: order.deliveryLocation,
+
+      // Items - transform t-shirt order to invoice items
+      items: order.sizes.map((sizeItem, index) => ({
+        id: `${order._id}-${index}`,
+        description: `${order.tShirtType} - ${sizeItem.size}`,
+        productName: `${order.tShirtType} - ${sizeItem.size}`,
+        name: `${order.tShirtType} - ${sizeItem.size}`,
+        size: sizeItem.size,
+        color: order.colorPreference,
+        print: order.customText || '-',
+        quantity: sizeItem.quantity,
+        unitPrice: 299, // Default price - you can adjust this
+        pricePerItem: 299,
+        price: 299,
+        total: 299 * sizeItem.quantity,
+        totalPrice: 299 * sizeItem.quantity,
+        image: null, // No image for t-shirt orders
+        imageUrl: null
+      })),
+
+      // Totals
+      subtotal: order.sizes.reduce((sum, item) => sum + (299 * item.quantity), 0),
+      totalAmount: order.sizes.reduce((sum, item) => sum + (299 * item.quantity), 0),
+      total: order.sizes.reduce((sum, item) => sum + (299 * item.quantity), 0),
+
+      // Additional order details
+      deliveryDate: order.deliveryDate,
+      dueDate: order.deliveryDate,
+      status: 'pending',
+
+      // Invoice type
+      invoiceType: 'tax',
+
+      // GST details (can be customized)
+      cgst: 9,
+      sgst: 9,
+      igst: 0,
+      cgstAmount: 0,
+      sgstAmount: 0,
+      igstAmount: 0,
+      discountAmount: 0
+    };
+
+    res.json({
+      success: true,
+      data: invoiceData
+    });
+
+  } catch (error) {
+    console.error('Get order for invoice error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch order for invoice'
     });
   }
 });

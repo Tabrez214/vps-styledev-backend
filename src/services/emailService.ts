@@ -674,6 +674,56 @@ class EmailService {
 
     await this.sendEmail(email, subject, html);
   }
+
+  // Static methods for Status Management Service
+  static async sendStatusUpdateEmail(data: {
+    orderId: string;
+    orderNumber: string;
+    previousStatus: string;
+    newStatus: string;
+    customerName: string;
+    customerEmail?: string;
+    statusDescription: string;
+    estimatedDelivery?: string | null;
+  }): Promise<void> {
+    if (!data.customerEmail) {
+      console.log('⚠️ No customer email available for order:', data.orderId);
+      return;
+    }
+
+    // For now, just log the email. In production, use the existing email service
+    console.log('📧 Status Update Email:', {
+      to: data.customerEmail,
+      subject: `Order ${data.orderNumber} Status Update: ${data.newStatus}`,
+      orderNumber: data.orderNumber,
+      status: data.newStatus,
+      description: data.statusDescription,
+      estimatedDelivery: data.estimatedDelivery
+    });
+
+    // TODO: Use the existing emailService instance to send actual emails
+    // const emailService = new EmailService();
+    // await emailService.sendOrderStatusEmail(mockOrder, data.newStatus);
+  }
+
+  static async sendInternalAlert(data: {
+    orderId: string;
+    orderNumber: string;
+    previousStatus: string;
+    newStatus: string;
+    customerEmail?: string;
+  }): Promise<void> {
+    console.log('🚨 Internal Alert:', {
+      type: 'Order Status Alert',
+      orderId: data.orderId,
+      orderNumber: data.orderNumber,
+      status: data.newStatus,
+      customer: data.customerEmail,
+      message: `Order ${data.orderNumber} changed to ${data.newStatus}`
+    });
+
+    // TODO: Send to admin email or Slack notification
+  }
 }
 
 export default EmailService;

@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 import { IOrder, OrderCost } from '../../interfaces';
 
 // Create a type that extends Document with our interface
-export interface OrderDocument extends Document, IOrder {}
+export interface OrderDocument extends Document, IOrder { }
 
 // Order cost schema with validation
 const orderCostSchema = new Schema<OrderCost>({
@@ -24,7 +24,6 @@ const orderSchema = new Schema<OrderDocument>({
     type: String,
     required: true,
     unique: true,
-    index: true,
     trim: true
   },
   designId: {
@@ -81,7 +80,7 @@ const orderSchema = new Schema<OrderDocument>({
     of: Number,
     required: true,
     validate: {
-      validator: function(sizes: Map<string, number>) {
+      validator: function (sizes: Map<string, number>) {
         return Array.from(sizes.values()).some(qty => qty > 0);
       },
       message: 'At least one size must have a quantity greater than 0'
@@ -145,7 +144,7 @@ const orderSchema = new Schema<OrderDocument>({
 });
 
 // Validate price breakdown totals
-orderSchema.pre('save', function(next) {
+orderSchema.pre('save', function (next) {
   const order = this as OrderDocument;
 
   const additionalCostsTotal = order.priceBreakdown.additionalCosts.reduce(

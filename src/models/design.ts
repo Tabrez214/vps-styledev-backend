@@ -91,7 +91,7 @@ const designElementSchema = new Schema<IDesignElement>({
 
 const designSchema = new Schema<IDesign>({
   name: { type: String, required: true, trim: true },
-  shareableId: { type: String, required: true, unique: true, index: true },
+  shareableId: { type: String, required: true, unique: true },
   accessToken: { type: String },
   tshirt: {
     style: { type: String, required: true },
@@ -135,7 +135,7 @@ const designSchema = new Schema<IDesign>({
   timestamps: true
 });
 
-designSchema.pre<IDesign>('save', function(next) {
+designSchema.pre<IDesign>('save', function (next) {
   this.metadata.updatedAt = new Date();
   next();
 });
@@ -144,5 +144,5 @@ designSchema.index({ 'metadata.email': 1 });
 designSchema.index({ isPublic: 1 });
 designSchema.index({ expiresAt: 1 });
 
-const Design = mongoose.model<IDesign>('Design', designSchema);
+const Design = mongoose.models.Design || mongoose.model<IDesign>('Design', designSchema);
 export default Design;

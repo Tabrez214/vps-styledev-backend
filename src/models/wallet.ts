@@ -23,70 +23,70 @@ export interface IWallet extends Document {
 }
 
 const WalletTransactionSchema: Schema = new Schema({
-  userId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User', 
-    required: true 
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   },
-  type: { 
-    type: String, 
-    enum: ['credit', 'debit'], 
-    required: true 
+  type: {
+    type: String,
+    enum: ['credit', 'debit'],
+    required: true
   },
-  amount: { 
-    type: Number, 
-    required: true, 
-    min: 0 
-  },
-  description: { 
-    type: String, 
+  amount: {
+    type: Number,
     required: true,
-    trim: true 
+    min: 0
   },
-  reference: { 
-    type: String, 
-    trim: true 
+  description: {
+    type: String,
+    required: true,
+    trim: true
   },
-  status: { 
-    type: String, 
-    enum: ['pending', 'completed', 'failed'], 
-    default: 'completed' 
+  reference: {
+    type: String,
+    trim: true
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'completed', 'failed'],
+    default: 'completed'
   }
 }, {
   timestamps: true
 });
 
 const WalletSchema: Schema = new Schema({
-  userId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User', 
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
     required: true,
-    unique: true 
+    unique: true
   },
-  balance: { 
-    type: Number, 
+  balance: {
+    type: Number,
     required: true,
     default: 0,
-    min: 0 
+    min: 0
   },
-  currency: { 
-    type: String, 
+  currency: {
+    type: String,
     required: true,
     default: 'INR',
-    uppercase: true 
+    uppercase: true
   },
-  isActive: { 
-    type: Boolean, 
-    default: true 
+  isActive: {
+    type: Boolean,
+    default: true
   }
 }, {
   timestamps: true
 });
 
-// Indexes
+// Indexes - only for non-unique fields
 WalletTransactionSchema.index({ userId: 1, createdAt: -1 });
 WalletTransactionSchema.index({ status: 1 });
-WalletSchema.index({ userId: 1 });
+// WalletSchema userId index removed since unique: true already creates an index
 
 export const WalletTransaction = mongoose.model<IWalletTransaction>('WalletTransaction', WalletTransactionSchema);
 export const Wallet = mongoose.model<IWallet>('Wallet', WalletSchema);

@@ -48,5 +48,5 @@ assetSchema.index({ type: 1, category: 1 });
 assetSchema.index({ tags: 1 });
 assetSchema.index({ isActive: 1 });
 
-const Asset = mongoose.model<IAsset>('Asset', assetSchema);
+const Asset = mongoose.models.Asset || mongoose.model<IAsset>('Asset', assetSchema);
 export default Asset;

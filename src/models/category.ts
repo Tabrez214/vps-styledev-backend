@@ -20,27 +20,26 @@ interface ICategory extends Document {
 
 const CategorySchema = new Schema<ICategory>(
   {
-    name: { 
-      type: String, 
-      required: true, 
+    name: {
+      type: String,
+      required: true,
       unique: true,
       trim: true
     },
-    slug: { 
-      type: String, 
+    slug: {
+      type: String,
       unique: true,
       sparse: true,
-      index: true,
       trim: true
     },
-    featured: { 
-      type: Boolean, 
-      default: false 
+    featured: {
+      type: Boolean,
+      default: false
     },
-    parent: { 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: 'Category', 
-      default: null 
+    parent: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Category',
+      default: null
     },
     ancestors: [{
       _id: { type: mongoose.Schema.Types.ObjectId, ref: 'Category' },
@@ -56,63 +55,61 @@ const CategorySchema = new Schema<ICategory>(
         return val.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
       }
     },
-    metaTitle: { 
+    metaTitle: {
       type: String,
       default: ''
     },
-    metaDescription: { 
+    metaDescription: {
       type: String,
       default: ''
     },
-    imageUrl: { 
+    imageUrl: {
       type: String,
       default: ''
     },
-    imageAlt: { 
+    imageAlt: {
       type: String,
       default: ''
     },
   },
-  { 
+  {
     timestamps: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true }
   }
 );
 
-// Indexes for better performance
-CategorySchema.index({ name: 1 });
-CategorySchema.index({ slug: 1 });
+// Indexes for better performance - only for non-unique fields
 CategorySchema.index({ parent: 1 });
 CategorySchema.index({ featured: 1 });
 
 // Virtual method to get slug (stored or generated)
-CategorySchema.methods.getSlug = function(): string {
+CategorySchema.methods.getSlug = function (): string {
   if (this.slug) return this.slug;
   return slugify(this.name, { lower: true, strict: true });
 };
 
 // Virtual field for easy access
-CategorySchema.virtual('effectiveSlug').get(function() {
+CategorySchema.virtual('effectiveSlug').get(function () {
   return this.getSlug();
 });
 
 // Pre-save middleware for slug handling
-CategorySchema.pre<ICategory>('save', async function(next) {
+CategorySchema.pre<ICategory>('save', async function (next) {
   try {
     // Only auto-generate slug if it's not set and this is a new document
     if (this.isNew && !this.slug) {
       this.slug = await generateUniqueSlug(this.name);
     }
-    
+
     // If slug is being modified, ensure it's unique
     if (this.isModified('slug') && this.slug) {
       const CategoryModel = this.constructor as mongoose.Model<ICategory>;
-      const existingWithSlug = await CategoryModel.findOne({ 
-        slug: this.slug, 
-        _id: { $ne: this._id } 
+      const existingWithSlug = await CategoryModel.findOne({
+        slug: this.slug,
+        _id: { $ne: this._id }
       });
-      
+
       if (existingWithSlug) {
         const error = new Error(`Slug '${this.slug}' already exists`);
         return next(error);
@@ -131,23 +128,23 @@ async function generateUniqueSlug(name: string, excludeId?: string): Promise<str
   let baseSlug = slugify(name, { lower: true, strict: true });
   let slug = baseSlug;
   let counter = 1;
-  
+
   const query: any = { slug: slug };
   if (excludeId) {
     query._id = { $ne: excludeId };
   }
-  
+
   while (await CategoryModel.findOne(query)) {
     slug = `${baseSlug}-${counter}`;
     counter++;
     query.slug = slug;
   }
-  
+
   return slug;
 }
 
 // Method to update ancestors
-CategorySchema.methods.updateAncestors = async function() {
+CategorySchema.methods.updateAncestors = async function () {
   try {
     if (!this.parent) {
       this.ancestors = [];
@@ -157,7 +154,7 @@ CategorySchema.methods.updateAncestors = async function() {
         .findById(this.parent)
         .select('name slug ancestors')
         .exec();
-        
+
       if (parentCategory) {
         const parentSlug = parentCategory.getSlug();
         this.ancestors = parentCategory.ancestors ? [
@@ -171,15 +168,15 @@ CategorySchema.methods.updateAncestors = async function() {
         this.parent = null;
       }
     }
-    
+
     // Update the document in database
     await mongoose.model<ICategory>('Category').updateOne(
-      { _id: this._id }, 
-      { 
-        $set: { 
-          ancestors: this.ancestors, 
-          parent: this.parent 
-        } 
+      { _id: this._id },
+      {
+        $set: {
+          ancestors: this.ancestors,
+          parent: this.parent
+        }
       }
     );
   } catch (error) {
@@ -189,12 +186,12 @@ CategorySchema.methods.updateAncestors = async function() {
 };
 
 // Post-save middleware to update child categories' ancestors
-CategorySchema.post<ICategory>('save', async function(doc) {
+CategorySchema.post<ICategory>('save', async function (doc) {
   try {
     // Update all child categories' ancestors when this category is updated
     const CategoryModel = mongoose.model<ICategory>('Category');
     const children = await CategoryModel.find({ parent: doc._id });
-    
+
     for (const child of children) {
       await child.updateAncestors();
     }

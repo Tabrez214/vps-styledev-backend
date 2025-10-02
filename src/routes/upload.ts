@@ -3,9 +3,10 @@ import upload from '../middleware/uploadMiddleware';
 import { Request, Response } from 'express';
 import FileModel from '../models/file'; // Import Mongoose Model
 import Product from '../models/product';
+import { asyncHandler } from '../middleware/errorMiddleware';
 
 const router = express.Router();
-router.post('/upload', upload.single('file'), async (req: Request, res: Response): Promise<void> => {
+router.post('/upload', upload.single('file'), asyncHandler(async (req: Request, res: Response): Promise<void> => {
   console.log('Incoming file upload request');
 
   if (!req.file) {
@@ -43,7 +44,7 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     console.error('Upload error:', error);
     res.status(500).json({ error: 'Failed to process upload' });
   }
-});
+}));
 
 
 export default router;

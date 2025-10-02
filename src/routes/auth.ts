@@ -6,11 +6,14 @@ import User from '../models/user';
 import { sendOTPEmail } from '../lib/emailService';
 import { generateOTP, storeOTP, verifyOTP } from '../lib/otpService';
 import { generateToken, refreshAccessToken, revokeRefreshToken, generateTokenPair } from '../utils/jwt';
+import { validatePassword } from '../utils/passwordValidation';
 import { UserSchema } from '../schemas/user';
 import { tempUserStore } from '../lib/tempUserStore';
 import { sendPasswordResetEmail } from '../lib/emailService';
 import EmailCampaignService from '../services/emailCampaignService';
 import { GuestService } from '../services/guestService';
+import { SessionService } from '../services/sessionService';
+import crypto from 'crypto';
 
 const router = Router();
 
@@ -180,12 +183,21 @@ router.post('/login', async (req: Request, res: Response) => {
       req.ip
     );
 
+    // Create session using SessionService
+    const sessionId = await SessionService.createSession(
+      user._id.toString(),
+      req.headers['user-agent'],
+      req.ip
+    );
+
     console.log('Login successful for user:', email);
     res.json({
       message: "Login successful",
       token: accessToken, // For backward compatibility
       accessToken,
       refreshToken,
+      sessionId,
+      expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(), // 90 days
       user: {
         id: user._id,
         username: user.username,
@@ -443,11 +455,13 @@ router.post('/reset-password', async (req: Request, res: Response) => {
       return;
     }
 
-    // Validate password strength (you can customize this)
-    if (newPassword.length < 6) {
+    // Validate password strength using centralized validation
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.isValid) {
       res.status(400).json({
         error: "Weak password",
-        message: "Password must be at least 6 characters long"
+        message: "Password does not meet security requirements",
+        details: passwordValidation.errors
       });
       return;
     }
@@ -576,14 +590,19 @@ router.post('/refresh-token', async (req: Request, res: Response) => {
   }
 });
 
-// Logout endpoint to revoke refresh token
+// Logout endpoint to revoke refresh token and session
 router.post('/logout', async (req: Request, res: Response) => {
   try {
-    const { refreshToken } = req.body;
+    const { refreshToken, sessionId } = req.body;
 
     if (refreshToken) {
       // Revoke the refresh token if provided
       await revokeRefreshToken(refreshToken);
+    }
+
+    if (sessionId) {
+      // Revoke the session if provided
+      await SessionService.revokeSession(sessionId);
     }
 
     res.json({
@@ -621,11 +640,13 @@ router.post('/claim-account', async (req: Request, res: Response) => {
       return;
     }
 
-    // Validate password strength
-    if (password.length < 6) {
+    // Validate password strength using centralized validation
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
       res.status(400).json({
-        error: "Weak password",
-        message: "Password must be at least 6 characters long"
+        error: "Weak password", 
+        message: "Password does not meet security requirements",
+        details: passwordValidation.errors
       });
       return;
     }

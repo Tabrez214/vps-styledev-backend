@@ -1,16 +1,9 @@
 import mongoose, { Document } from "mongoose";
+import { STANDARD_SIZES, StandardSize, StandardAddress } from "../types/standardTypes";
 
-// Billing Address interface
-interface IBillingAddress {
-  name?: string;
-  email?: string;
-  phone?: string;
-  street?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  country?: string;
-  gstNumber?: string;
+// Use standardized address interface
+interface IBillingAddress extends StandardAddress {
+  // All fields inherited from StandardAddress for consistency
 }
 
 // Guest Session Data interface
@@ -27,14 +20,21 @@ interface IExpressCheckoutMetadata {
   originalEmail?: string;
 }
 
-// Order Item interface
+// Order Item interface - Standardized
 interface IOrderItem {
-  productId?: any; // Mixed type for flexibility
+  productId?: mongoose.Types.ObjectId; // Consistent ObjectId type
+  product?: {                          // Optional populated product data
+    _id: mongoose.Types.ObjectId;
+    name: string;
+    images?: string[];
+  };
   designId?: mongoose.Types.ObjectId;
   quantity: number;
-  price: number;
-  sizes?: any; // Mixed type for design orders
-  designData?: any; // Mixed type for design orders
+  pricePerItem: number;               // Standardized field name (was 'price')
+  totalPrice: number;                 // Add for consistency
+  color: string;                      // Explicit color field
+  size: StandardSize;                 // Use standard size enum
+  designData?: any;                   // For design order specific data
 }
 
 // Main Order interface
@@ -55,9 +55,20 @@ export interface IOrder extends Document {
   razorpay_payment_id?: string;
   razorpay_order_id?: string;
   razorpay_signature?: string;
+  verificationToken?: string;
+  tokenExpiry?: Date;
   status: 'pending' | 'completed' | 'failed';
+  statusHistory?: Array<{
+    previousStatus: string;
+    newStatus: string;
+    changedAt: Date;
+    changedBy: string;
+    reason?: string;
+    automaticChange: boolean;
+  }>;
   invoice?: mongoose.Types.ObjectId;
   designOrderData?: any;
+  linkedDesignOrders?: mongoose.Types.ObjectId[]; // References to DesignOrder documents
   checkoutType: 'regular' | 'express';
   guestSessionData?: IGuestSessionData;
   expressCheckoutMetadata?: IExpressCheckoutMetadata;
@@ -117,23 +128,28 @@ const orderSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    // Billing address from payment gateway (for express checkout)
+    // Billing address from payment gateway (for express checkout) - Standardized
     billingAddress: {
-      name: { type: String, trim: true },
+      name: { type: String, required: true, trim: true },
       email: { type: String, trim: true, lowercase: true },
       phone: { type: String, trim: true },
-      street: { type: String, trim: true },
-      city: { type: String, trim: true },
-      state: { type: String, trim: true },
-      zipCode: { type: String, trim: true },
-      country: { type: String, trim: true, default: 'India' },
+      street: { type: String, required: true, trim: true }, // Standardized field name
+      city: { type: String, required: true, trim: true },
+      state: { type: String, required: true, trim: true },
+      zipCode: { type: String, required: true, trim: true }, // Standardized field name
+      country: { type: String, required: true, trim: true, default: 'India' },
       gstNumber: { type: String, trim: true }, // For invoice generation
     },
     items: [{
       productId: {
-        type: mongoose.Schema.Types.Mixed, // Made flexible to support design orders
+        type: mongoose.Schema.Types.ObjectId, // Consistent ObjectId type
         ref: "Product",
-        required: false, // Made optional for design orders
+        required: false, // Optional for design orders
+      },
+      product: {
+        _id: { type: mongoose.Schema.Types.ObjectId },
+        name: { type: String },
+        images: [{ type: String }]
       },
       designId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -143,17 +159,29 @@ const orderSchema = new mongoose.Schema(
       quantity: {
         type: Number,
         required: true,
+        min: 1
       },
-      price: {
+      pricePerItem: {                    // Standardized field name (was 'price')
         type: Number,
         required: true,
+        min: 0
       },
-      // Design order specific fields
-      sizes: {
-        type: mongoose.Schema.Types.Mixed,
-        required: false,
+      totalPrice: {                      // Add for consistency
+        type: Number,
+        required: true,
+        min: 0
       },
-      designData: {
+      color: {                           // Explicit color field
+        type: String,
+        required: true,
+        trim: true
+      },
+      size: {                            // Use standard size enum
+        type: String,
+        required: true,
+        enum: STANDARD_SIZES
+      },
+      designData: {                      // For design order specific data
         type: mongoose.Schema.Types.Mixed,
         required: false,
       }
@@ -170,11 +198,28 @@ const orderSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    // Secure verification token for thank you page access
+    verificationToken: {
+      type: String,
+      default: null,
+    },
+    tokenExpiry: {
+      type: Date,
+      default: null,
+    },
     status: {
       type: String,
-      enum: ["pending", "completed", "failed"],
+      enum: ["pending", "completed", "failed", "processing", "shipped", "delivered", "cancelled", "returned", "refunded"],
       default: "pending",
     },
+    statusHistory: [{
+      previousStatus: { type: String, required: true },
+      newStatus: { type: String, required: true },
+      changedAt: { type: Date, default: Date.now },
+      changedBy: { type: String, required: true },
+      reason: { type: String },
+      automaticChange: { type: Boolean, default: false }
+    }],
     invoice: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Invoice",
@@ -184,6 +229,10 @@ const orderSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed,
       required: false,
     },
+    linkedDesignOrders: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "DesignOrder",
+    }],
     // Express checkout metadata
     checkoutType: {
       type: String,

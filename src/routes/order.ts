@@ -5,6 +5,9 @@ import Order from "../models/order"
 import Product from "../models/product"
 import Address from "../models/address"
 import DiscountCode from "../models/discount-codes"
+// import { OrderLinkingService } from "../services/orderLinkingService"
+// import { StatusManagementService } from "../services/statusManagementService"
+// import { statusUpdateMiddleware } from "../middleware/statusValidationMiddleware"
 
 const router = express.Router()
 
@@ -37,7 +40,7 @@ router.get("/", authMiddleware, async (req: RequestWithUser, res: Response) => {
     });
 
     const orders = await Order.find(query)
-      .select('order_id subtotal discountAmount totalAmount status createdAt items')
+      .select('order_id subtotal discountAmount totalAmount status createdAt items address billingAddress user name')
       .populate({
         path: 'items.productId',
         select: 'name images',
@@ -45,7 +48,11 @@ router.get("/", authMiddleware, async (req: RequestWithUser, res: Response) => {
       })
       .populate({
         path: 'address',
-        select: 'fullName phoneNumber streetAddress city state country postalCode'
+        select: 'fullName phoneNumber streetAddress city state country postalCode email'
+      })
+      .populate({
+        path: 'user',
+        select: 'name email phone'
       })
       .populate({
         path: 'discountCode',
@@ -55,35 +62,84 @@ router.get("/", authMiddleware, async (req: RequestWithUser, res: Response) => {
       .lean();
 
     // Transform the response
-    const cleanedOrders = orders.map(order => ({
-      orderId: order.order_id,
-      subtotal: order.subtotal,
-      discountAmount: order.discountAmount || 0,
-      discountCode: order.discountCode ? {
-        code: (order.discountCode as any).code,
-        type: (order.discountCode as any).discountType,
-        value: (order.discountCode as any).discountValue
-      } : null,
-      totalAmount: order.totalAmount,
-      status: order.status,
-      orderDate: order.createdAt,
-      items: order.items.map((item: any) => ({
-        productName: item.productId?.name || 'Product not found',
-        quantity: item.quantity,
-        pricePerItem: item.price,
-        totalPrice: item.price * item.quantity,
-        image: item.productId?.images?.find((img: any) => img.isDefault)?.url || item.productId?.images?.[0]?.url || null
-      })),
-      shippingAddress: {
-        fullName: (order.address as any)?.fullName,
-        phoneNumber: (order.address as any)?.phoneNumber,
-        address: (order.address as any)?.streetAddress,
-        city: (order.address as any)?.city,
-        state: (order.address as any)?.state,
-        country: (order.address as any)?.country,
-        postalCode: (order.address as any)?.postalCode
+    const cleanedOrders = orders.map(order => {
+      // Handle address - could be populated reference or direct object
+      let addressData = null;
+      if (order.address) {
+        if (typeof order.address === 'object' && order.address._id) {
+          // Populated address reference
+          addressData = order.address;
+        } else if (typeof order.address === 'object') {
+          // Direct address object (like in express checkout)
+          addressData = order.address;
+        }
       }
-    }));
+
+      // Handle billing address
+      let billingAddressData = order.billingAddress || null;
+
+      // Get customer info from user, address, or billing address
+      const customerName = (order.user as any)?.name ||
+        addressData?.fullName ||
+        addressData?.name ||
+        billingAddressData?.name ||
+        order.name ||
+        'N/A';
+
+      const customerEmail = (order.user as any)?.email ||
+        addressData?.email ||
+        billingAddressData?.email ||
+        'N/A';
+
+      const customerPhone = (order.user as any)?.phone ||
+        addressData?.phoneNumber ||
+        addressData?.phone ||
+        billingAddressData?.phone ||
+        'N/A';
+
+      return {
+        orderId: order.order_id,
+        subtotal: order.subtotal,
+        discountAmount: order.discountAmount || 0,
+        discountCode: order.discountCode ? {
+          code: (order.discountCode as any).code,
+          type: (order.discountCode as any).discountType,
+          value: (order.discountCode as any).discountValue
+        } : null,
+        totalAmount: order.totalAmount,
+        status: order.status,
+        orderDate: order.createdAt,
+        // Customer information
+        customer: {
+          name: customerName,
+          email: customerEmail,
+          phone: customerPhone
+        },
+        items: order.items.map((item: any) => ({
+          productName: item.productId?.name || 'Product not found',
+          quantity: item.quantity,
+          pricePerItem: item.price,
+          totalPrice: item.price * item.quantity,
+          image: item.productId?.images?.find((img: any) => img.isDefault)?.url || item.productId?.images?.[0]?.url || null
+        })),
+        // Address information
+        shippingAddress: addressData ? {
+          fullName: addressData.fullName || addressData.name,
+          email: addressData.email,
+          phoneNumber: addressData.phoneNumber || addressData.phone,
+          address: addressData.streetAddress || addressData.street,
+          city: addressData.city,
+          state: addressData.state,
+          country: addressData.country,
+          postalCode: addressData.postalCode || addressData.zipCode
+        } : null,
+        billingAddress: billingAddressData,
+        // Raw address data for invoice generation
+        address: addressData,
+        // Invoice type based on order status
+        invoiceType: order.status === 'completed' ? 'tax' : 'proforma'
+      };
+    });
 
     res.status(200).json(cleanedOrders);
   } catch (error) {
@@ -135,7 +191,7 @@ router.post("/", authMiddleware, async (req: RequestWithUser, res) => {
     // Process discount code if provided
     if (discountCode) {
       // Find and validate the discount code
-      const discount = await DiscountCode.findOne({ 
+      const discount = await DiscountCode.findOne({
         code: discountCode.toUpperCase(),
         isActive: true,
         startDate: { $lte: new Date() },
@@ -155,7 +211,7 @@ router.post("/", authMiddleware, async (req: RequestWithUser, res) => {
 
       // Check minimum purchase amount
       if (subtotal < discount.minPurchaseAmount) {
-        res.status(400).json({ 
+        res.status(400).json({
           message: `Minimum purchase amount of ${discount.minPurchaseAmount} required`,
           minPurchaseAmount: discount.minPurchaseAmount,
         })
@@ -166,9 +222,9 @@ router.post("/", authMiddleware, async (req: RequestWithUser, res) => {
       if (discount.applicableProducts.length > 0) {
         const orderProductIds = products.map((item: any) => item.product.toString())
         const eligibleProductIds = discount.applicableProducts.map((id: any) => id.toString())
-        
+
         const hasEligibleProduct = orderProductIds.some((id: string) => eligibleProductIds.includes(id))
-        
+
         if (!hasEligibleProduct) {
           res.status(400).json({ message: "Discount code not applicable to items in cart" })
           return
@@ -179,9 +235,9 @@ router.post("/", authMiddleware, async (req: RequestWithUser, res) => {
       if (discount.excludedProducts.length > 0) {
         const orderProductIds = products.map((item: any) => item.product.toString())
         const excludedProductIds = discount.excludedProducts.map((id: any) => id.toString())
-        
+
         const hasExcludedProduct = orderProductIds.some((id: string) => excludedProductIds.includes(id))
-        
+
         if (hasExcludedProduct) {
           res.status(400).json({ message: "Discount code not applicable to some items in cart" })
           return
@@ -230,7 +286,7 @@ router.post("/", authMiddleware, async (req: RequestWithUser, res) => {
     })
 
     await newOrder.save()
-    
+
     // Log discount information if applied
     if (discountCodeId) {
       console.log("💰 Discount applied to order:", {
@@ -241,7 +297,7 @@ router.post("/", authMiddleware, async (req: RequestWithUser, res) => {
         totalAfterDiscount: totalAmount
       });
     }
-    
+
     res.status(201).json({
       message: "Order created successfully",
       order: newOrder,
@@ -267,8 +323,8 @@ router.put("/:id", authMiddleware, authorizeRoles("admin"), async (req, res) => 
     }
 
     const updatedOrder = await Order.findByIdAndUpdate(
-      req.params.id, 
-      { status }, 
+      req.params.id,
+      { status },
       { new: true }
     )
 
@@ -282,5 +338,72 @@ router.put("/:id", authMiddleware, authorizeRoles("admin"), async (req, res) => 
     res.status(500).json({ message: "Failed to update order", error })
   }
 })
+
+// Enhanced linking endpoints - TEMPORARILY COMMENTED OUT
+/*
+router.get('/:orderId/with-designs', authMiddleware, async (req: RequestWithUser, res: Response): Promise<void> => {
+  try {
+    const order = await OrderLinkingService.getOrderWithDesignOrders(req.params.orderId);
+    if (!order) {
+      res.status(404).json({ message: 'Order not found' });
+      return;
+    }
+    res.json({ success: true, data: order });
+  } catch (error) {
+    console.error('Error fetching order with design orders:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Enhanced status update with full validation and notifications
+router.patch('/:orderId/status', statusUpdateMiddleware, async (req: RequestWithUser, res: Response): Promise<void> => {
+  try {
+    const { status, reason, notifyCustomer = true } = req.body;
+    const changedBy = req.user?.userId || 'system';
+
+    const result = await StatusManagementService.updateOrderStatus({
+      orderId: req.params.orderId,
+      newStatus: status,
+      reason,
+      changedBy,
+      notifyCustomer
+    });
+
+    res.json({
+      success: true,
+      message: 'Order status updated successfully',
+      data: result
+    });
+  } catch (error) {
+    console.error('Error updating order status:', error);
+    res.status(500).json({ message: 'Failed to update order status' });
+  }
+});
+
+// Get order status history
+router.get('/:orderId/status-history', authMiddleware, async (req: RequestWithUser, res: Response): Promise<void> => {
+  try {
+    const history = await StatusManagementService.getOrderStatusHistory(req.params.orderId);
+    res.json({ success: true, data: history });
+  } catch (error) {
+    console.error('Error fetching order status history:', error);
+    if (error instanceof Error && error.message === 'Order not found') {
+      res.status(404).json({ message: 'Order not found' });
+      return;
+    }
+    res.status(500).json({ message: 'Failed to fetch order status history' });
+  }
+});
+
+router.get('/admin/linking-stats', authMiddleware, async (req: RequestWithUser, res: Response): Promise<void> => {
+  try {
+    const stats = await OrderLinkingService.getOrderStatistics();
+    res.json({ success: true, data: stats });
+  } catch (error) {
+    console.error('Error fetching linking statistics:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+*/
 
 export default router

@@ -1,14 +1,18 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { STANDARD_SIZES, StandardSize } from '../types/standardTypes';
 
 export interface IInvoiceItem {
+  id?: string;                 // Add unique identifier
   description: string;
-  size: string;
+  size: StandardSize;          // Use standard size enum
   color: string;
   customColor?: string;
   quantity: number;
-  unitPrice: number;
-  total: number;
+  unitPrice: number;           // Same as pricePerItem
+  total: number;               // Same as tot  alPrice
   image?: string;
+  isDesignItem?: boolean;      // Add for design order items
+  designData?: any;            // Add for design order specific data
 }
 
 export interface IInvoice extends Document {
@@ -51,6 +55,10 @@ export interface IInvoice extends Document {
 }
 
 const InvoiceItemSchema = new Schema<IInvoiceItem>({
+  id: {
+    type: String,
+    default: () => `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  },
   description: {
     type: String,
     required: true,
@@ -59,7 +67,7 @@ const InvoiceItemSchema = new Schema<IInvoiceItem>({
   size: {
     type: String,
     required: true,
-    enum: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL']
+    enum: STANDARD_SIZES            // Use standardized size enum
   },
   color: {
     type: String,
@@ -87,6 +95,13 @@ const InvoiceItemSchema = new Schema<IInvoiceItem>({
   image: {
     type: String,
     trim: true
+  },
+  isDesignItem: {                   // Add for design order items
+    type: Boolean,
+    default: false
+  },
+  designData: {                     // Add for design order specific data
+    type: Schema.Types.Mixed
   }
 });
 
@@ -101,7 +116,7 @@ const InvoiceSchema = new Schema<IInvoice>({
     type: String,
     required: true,
     enum: ['tax', 'proforma'],
-    default: 'proforma'
+    default: 'tax'
   },
   date: {
     type: Date,

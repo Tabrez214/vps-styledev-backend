@@ -28,23 +28,41 @@ const storage = multer.diskStorage({
   },
 });
 
-// File filter to allow images and some design files
+// File filter to allow images and design files
 const fileFilter = (req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  // Allow images and some design file formats
+  // Allow images and design file formats
   const allowedMimeTypes = [
+    // Image formats
     'image/jpeg',
     'image/jpg', 
     'image/png',
     'image/gif',
     'image/webp',
     'image/svg+xml',
-    'application/pdf', // For design references
+    // Design file formats
+    'application/pdf', // PDF files
+    'application/postscript', // AI and EPS files
+    'image/vnd.adobe.photoshop', // PSD files
+    'application/x-photoshop', // Alternative PSD MIME type
+    'image/photoshop', // Another PSD MIME type
+    'image/x-photoshop', // Another PSD MIME type
+    'application/photoshop', // Another PSD MIME type
+    'image/psd', // PSD MIME type
+    'application/illustrator', // AI files
+    'application/x-illustrator', // AI files
+    'image/x-eps', // EPS files
+    'application/eps', // EPS files
+    'application/x-eps', // EPS files
   ];
+
+  // Also check file extensions as a fallback since MIME types can vary
+  const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.pdf', '.ai', '.eps', '.psd'];
+  const fileExtension = file.originalname.toLowerCase().substring(file.originalname.lastIndexOf('.'));
   
-  if (allowedMimeTypes.includes(file.mimetype)) {
+  if (allowedMimeTypes.includes(file.mimetype) || allowedExtensions.includes(fileExtension)) {
     cb(null, true);
   } else {
-    cb(new Error('Invalid file type. Only images and PDF files are allowed for design studio.'));
+    cb(new Error('Invalid file type. Only images (JPG, PNG, GIF, WebP, SVG) and design files (PDF, AI, EPS, PSD) are allowed for design studio.'));
   }
 };
 

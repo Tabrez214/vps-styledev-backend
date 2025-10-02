@@ -11,6 +11,7 @@ import cartRouter from './routes/cart'
 import categoryRouter from './routes/category'
 import addressRouter from './routes/address'
 import authRouter from './routes/auth'
+import serverTimeRoutes from './routes/serverTime';
 import paymentRouter from './routes/payment'
 import discountRouter from './routes/discount-codes'
 import path from 'path';
@@ -24,12 +25,13 @@ import clipartLibraryRouter from './routes/design-studio/clipart-library';
 import designRoutes from './routes/design-studio/designRoutes';
 import assetRoutes from './routes/design-studio/asset';
 import designStudioUploadRouter from './routes/design-studio/upload';
-import emailRouter from './routes/email';
-import invoiceRouter from './routes/invoiceGenerator';
+// import emailRouter from './routes/email';
+// import invoiceRouter from './routes/invoiceGenerator';
 import reviewRouter from './routes/review';
-import designSubmissionRouter from './routes/designSubmission';
+// import designSubmissionRouter from './routes/designSubmission';
 import feedRouter from './routes/feed';
-// import emailCampaignRoutes from './routes/emailCampaign';
+import adminStatusManagementRouter from './routes/admin/statusManagement';
+// import emailCampaignRoutes from './routes/emailCampaign'; // COMMENTED OUT DUE TO MISSING EXPORTS
 // import CronService from './services/cronService';
 import { errorHandler } from './middleware/errorMiddleware';
 dotenv.config();
@@ -70,7 +72,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'x-csrf-token', 'x-session-id']
 }));
 
 // Increase body size limits for design studio uploads
@@ -245,6 +247,7 @@ app.get('/', (req, res) => {
 
 // Use the auth router for '/auth' routes
 app.use('/auth', authRouter);
+app.use('/auth', serverTimeRoutes);
 
 // Use the user router for '/user' routes
 app.use('/user', userRouter);
@@ -274,13 +277,17 @@ app.use('/design-studio/clipart-library', clipartLibraryRouter);
 app.use('/design-studio', designStudioUploadRouter); // Design studio file uploads
 app.use('/designs', designRoutes);
 app.use('/assets', assetRoutes);
-app.use('/email', emailRouter);
-app.use('/invoices', invoiceRouter);
+// app.use('/email', emailRouter);
+// app.use('/invoices', invoiceRouter);
 app.use('/api', reviewRouter);
-app.use('/design-challenge', designSubmissionRouter);
+// app.use('/design-challenge', designSubmissionRouter);
 
 // Google Shopping feed route
 app.use('/', feedRouter);
+
+// Admin routes
+app.use('/api/admin/status-management', adminStatusManagementRouter);
+
 // app.use('/email-campaigns', emailCampaignRoutes);
 
 // Global error handler - MUST be last middleware

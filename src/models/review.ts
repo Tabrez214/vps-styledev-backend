@@ -1,8 +1,8 @@
 import mongoose, { Document, Schema } from "mongoose";
 
 interface IReview extends Document {
-  productId: mongoose.Schema.Types.ObjectId;
-  userId: mongoose.Schema.Types.ObjectId;
+  productId: mongoose.Types.ObjectId;
+  userId: mongoose.Types.ObjectId;
   userName: string;
   userEmail: string;
   rating: number;
@@ -10,7 +10,7 @@ interface IReview extends Document {
   comment: string;
   verified: boolean;
   helpful: number;
-  helpfulVotes: mongoose.Schema.Types.ObjectId[];
+  helpfulVotes: mongoose.Types.ObjectId[];
   images: string[];
   createdAt: Date;
   updatedAt: Date;

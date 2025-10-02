@@ -17,45 +17,45 @@ export interface ISession extends Document {
 }
 
 const SessionSchema: Schema = new Schema({
-  userId: { 
-    type: Schema.Types.ObjectId, 
-    ref: 'User', 
-    required: true 
+  userId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   },
-  sessionId: { 
-    type: String, 
-    required: true, 
-    unique: true 
+  sessionId: {
+    type: String,
+    required: true,
+    unique: true
   },
-  expiresAt: { 
-    type: Date, 
+  expiresAt: {
+    type: Date,
     required: true,
     default: () => new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) // 90 days
   },
-  isActive: { 
-    type: Boolean, 
-    default: true 
+  isActive: {
+    type: Boolean,
+    default: true
   },
   deviceInfo: {
     userAgent: { type: String, required: true },
     ip: { type: String, required: true },
-    deviceType: { 
-      type: String, 
+    deviceType: {
+      type: String,
       enum: ['mobile', 'desktop', 'tablet'],
       default: 'desktop'
     },
     location: String
   },
-  lastActivity: { 
-    type: Date, 
-    default: Date.now 
+  lastActivity: {
+    type: Date,
+    default: Date.now
   }
 }, {
   timestamps: true
 });
 
-// Indexes for performance
-SessionSchema.index({ sessionId: 1 });
+// Indexes for performance - only for non-unique fields
+// sessionId index removed since unique: true already creates an index
 SessionSchema.index({ userId: 1 });
 SessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
@@ -72,11 +72,11 @@ export const createSession = async (
   ip: string
 ) => {
   const sessionId = crypto.randomBytes(32).toString('hex');
-  
+
   // Detect device type
-  const deviceType = userAgent.toLowerCase().includes('mobile') ? 'mobile' : 
-                    userAgent.toLowerCase().includes('tablet') ? 'tablet' : 'desktop';
-  
+  const deviceType = userAgent.toLowerCase().includes('mobile') ? 'mobile' :
+    userAgent.toLowerCase().includes('tablet') ? 'tablet' : 'desktop';
+
   const session = new Session({
     userId,
     sessionId,
@@ -86,7 +86,7 @@ export const createSession = async (
       deviceType
     }
   });
-  
+
   await session.save();
   return sessionId;
 };
@@ -97,22 +97,22 @@ export const validateSession = async (sessionId: string) => {
     isActive: true,
     expiresAt: { $gt: new Date() }
   }).populate('userId');
-  
+
   if (!session) {
     return null;
   }
-  
+
   // Update last activity
   session.lastActivity = new Date();
   await session.save();
-  
+
   return session.userId;
 };
 
 export const extendSession = async (sessionId: string) => {
   await Session.updateOne(
     { sessionId },
-    { 
+    {
       expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
       lastActivity: new Date()
     }

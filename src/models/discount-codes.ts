@@ -69,18 +69,19 @@ const discountCodeSchema = new mongoose.Schema(
   }
 );
 
-// Create index for faster lookups
-discountCodeSchema.index({ code: 1 });
+// Indexes for efficient queries (unique fields already have indexes)
+discountCodeSchema.index({ isActive: 1, expiryDate: 1 });
+discountCodeSchema.index({ createdBy: 1 });
 
 // Middleware to automatically uppercase discount codes
-discountCodeSchema.pre("save", function(next) {
+discountCodeSchema.pre("save", function (next) {
   if (this.isModified("code")) {
     this.code = this.code.toUpperCase();
   }
   next();
 });
 
-const DiscountCode = mongoose.models.DiscountCode || 
+const DiscountCode = mongoose.models.DiscountCode ||
   mongoose.model("DiscountCode", discountCodeSchema);
 
 export default DiscountCode;

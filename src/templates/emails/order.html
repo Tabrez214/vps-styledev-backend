@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Status Email Templates</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .template-container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: #1a1a1a;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .brand {
+            font-size: 24px;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 10px;
+        }
+        .pending { background-color: #fff3cd; color: #856404; }
+        .processing { background-color: #d4edda; color: #155724; }
+        .shipped { background-color: #cce5ff; color: #004085; }
+        .delivered { background-color: #d4edda; color: #155724; }
+        .cancelled { background-color: #f8d7da; color: #721c24; }
+        
+        .content {
+            padding: 30px;
+        }
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .message {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        .order-details {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .order-details h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 18px;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            color: #666;
+        }
+        .detail-label {
+            font-weight: 500;
+        }
+        .total-amount {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+            margin-top: 15px;
+        }
+        .cta-button {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            margin: 10px 0;
+            text-align: center;
+        }
+        .address-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+        }
+        .template-divider {
+            margin: 40px 0;
+            border-top: 3px solid #ddd;
+            text-align: center;
+            position: relative;
+        }
+        .template-label {
+            background: white;
+            padding: 0 20px;
+            position: relative;
+            top: -10px;
+            display: inline-block;
+            color: #666;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<!-- PENDING ORDER TEMPLATE -->
+<div class="template-container">
+    <div class="header">
+        <div class="brand">STYLEDEV</div>
+        <div class="status-badge pending">Order Confirmed</div>
+    </div>
+    <div class="content">
+        <div class="greeting">Hi {{customerName}},</div>
+        <div class="message">
+            Your order has been confirmed and is being prepared for processing. We'll notify you once it's ready for shipment.
+            <br><br>
+            Meanwhile, stay stylish!
+        </div>
+        
+        <div class="order-details">
+            <h3>Your Order Details</h3>
+            <div class="detail-row">
+                <span class="detail-label">Order ID:</span>
+                <span>{{orderId}}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Order placed on:</span>
+                <span>{{orderDate}}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Items:</span>
+                <span>{{itemCount}} item(s)</span>
+            </div>
+            <div class="detail-row total-amount">
+                <span>Total Amount:</span>
+                <span>₹{{totalAmount}}</span>
+            </div>
+        </div>
+
+        <div class="address-section">
+            <h4 style="margin: 0 0 10px 0; color: #333;">Delivery Address</h4>
+            <div style="color: #666;">{{shippingAddress}}</div>
+        </div>
+    </div>
+    <div class="footer">
+        <p>Questions or concerns? Visit us at <a href="mailto:support@styledev.com">support@styledev.com</a></p>
+        <p>Print Date: {{printDate}}</p>
+    </div>
+</div>
+
+<div class="template-divider">
+    <span class="template-label">PROCESSING TEMPLATE</span>
+</div>
+
+<!-- PROCESSING ORDER TEMPLATE -->
+<div class="template-container">
+    <div class="header">
+        <div class="brand">STYLEDEV</div>
+        <div class="status-badge processing">Order Processing</div>
+    </div>
+    <div class="content">
+        <div class="greeting">Hi {{customerName}},</div>
+        <div class="message">
+            Great news! Your order is now being processed and will be shipped soon. We're carefully preparing your items for delivery.
+            <br><br>
+            Expected shipping: Within 1-2 business days
+        </div>
+        
+        <div class="order-details">
+            <h3>Your Order Details</h3>
+            <div class="detail-row">
+                <span class="detail-label">Order ID:</span>
+                <span>{{orderId}}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Processing started:</span>
+                <span>{{processingDate}}</span>
+            </div>
+            <div class="detail-row total-amount">
+                <span>Total Amount:</span>
+                <span>₹{{totalAmount}}</span>
+            </div>
+        </div>
+
+        <a href="{{trackingUrl}}" class="cta-button">Track Your Order</a>
+    </div>
+    <div class="footer">
+        <p>Questions or concerns? Visit us at <a href="mailto:support@styledev.com">support@styledev.com</a></p>
+    </div>
+</div>
+
+<div class="template-divider">
+    <span class="template-label">SHIPPED TEMPLATE</span>
+</div>
+
+<!-- SHIPPED ORDER TEMPLATE -->
+<div class="template-container">
+    <div class="header">
+        <div class="brand">STYLEDEV</div>
+        <div class="status-badge shipped">Out for Delivery</div>
+    </div>
+    <div class="content">
+        <div class="greeting">Hi {{customerName}},</div>
+        <div class="message">
+            Your order is out for delivery! The courier will contact you to schedule the delivery. You don't have to pay anything.
+            <br><br>
+            Meanwhile, stay bold, stay stylish!
+        </div>
+        
+        <div class="order-details">
+            <h3>Your Order Details</h3>
+            <div class="detail-row">
+                <span class="detail-label">Order ID:</span>
+                <span>{{orderId}}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Shipped on:</span>
+                <span>{{shippedDate}}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Tracking ID:</span>
+                <span>{{trackingId}}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Expected delivery:</span>
+                <span>{{expectedDeliveryDate}}</span>
+            </div>
+        </div>
+
+        <a href="{{trackingUrl}}" class="cta-button">Track Shipment</a>
+
+        <div class="address-section">
+            <h4 style="margin: 0 0 10px 0; color: #333;">Delivery Address</h4>
+            <div style="color: #666;">{{shippingAddress}}</div>
+        </div>
+    </div>
+    <div class="footer">
+        <p>Questions or concerns? Visit us at <a href="mailto:support@styledev.com">support@styledev.com</a></p>
+    </div>
+</div>
+
+<div class="template-divider">
+    <span class="template-label">DELIVERED TEMPLATE</span>
+</div>
+
+<!-- DELIVERED ORDER TEMPLATE -->
+<div class="template-container">
+    <div class="header">
+        <div class="brand">STYLEDEV</div>
+        <div class="status-badge delivered">Order Delivered</div>
+    </div>
+    <div class="content">
+        <div class="greeting">Hi {{customerName}},</div>
+        <div class="message">
+            Your order has been successfully delivered! We hope you love your new items.
+            <br><br>
+            Meanwhile, stay bold, stay stylish! Thank you for shopping with us.
+        </div>
+        
+        <div class="order-details">
+            <h3>Your Order Details</h3>
+            <div class="detail-row">
+                <span class="detail-label">Order ID:</span>
+                <span>{{orderId}}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Delivered on:</span>
+                <span>{{deliveredDate}}</span>
+            </div>
+            <div class="detail-row total-amount">
+                <span>Total Amount:</span>
+                <span>₹{{totalAmount}}</span>
+            </div>
+        </div>
+
+        <a href="{{reviewUrl}}" class="cta-button">Rate Your Experience</a>
+    </div>
+    <div class="footer">
+        <p>Need help? Contact us at <a href="mailto:support@styledev.com">support@styledev.com</a></p>
+    </div>
+</div>
+
+<div class="template-divider">
+    <span class="template-label">CANCELLED TEMPLATE</span>
+</div>
+
+<!-- CANCELLED ORDER TEMPLATE -->
+<div class="template-container">
+    <div class="header">
+        <div class="brand">STYLEDEV</div>
+        <div class="status-badge cancelled">Order Cancelled</div>
+    </div>
+    <div class="content">
+        <div class="greeting">Hi {{customerName}},</div>
+        <div class="message">
+            Your order has been cancelled as requested. If you paid online, the refund will be processed within 5-7 business days.
+            <br><br>
+            We hope to serve you again soon!
+        </div>
+        
+        <div class="order-details">
+            <h3>Cancelled Order Details</h3>
+            <div class="detail-row">
+                <span class="detail-label">Order ID:</span>
+                <span>{{orderId}}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Cancelled on:</span>
+                <span>{{cancelledDate}}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Refund Status:</span>
+                <span>{{refundStatus}}</span>
+            </div>
+            <div class="detail-row total-amount">
+                <span>Refund Amount:</span>
+                <span>₹{{refundAmount}}</span>
+            </div>
+        </div>
+
+        <a href="{{shopUrl}}" class="cta-button">Continue Shopping</a>
+    </div>
+    <div class="footer">
+        <p>Questions about your refund? Contact us at <a href="mailto:support@styledev.com">support@styledev.com</a></p>
+    </div>
+</div>
+
+</body>
+</html>

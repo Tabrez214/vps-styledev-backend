@@ -63,14 +63,14 @@ const designElementSchema = new Schema<DesignElement>({
     lineHeight: Number,
     letterSpacing: Number,
     textPath: String,
-    
+
     // Image properties
     src: String,
     opacity: Number,
     filter: String,
     originalWidth: Number,
     originalHeight: Number,
-    
+
     // File metadata for uploaded images
     fileId: String,
     originalFilename: String,
@@ -141,8 +141,7 @@ const designSchema = new Schema<DesignDocument>({
   shareableId: {
     type: String,
     required: true,
-    unique: true,
-    index: true
+    unique: true
   },
   accessToken: {
     type: String,
@@ -173,20 +172,20 @@ const designSchema = new Schema<DesignDocument>({
   timestamps: true
 });
 
-// Indexes for better query performance
-designSchema.index({ shareableId: 1 });
+// Indexes for better query performance - only for non-unique fields
+// shareableId index removed since unique: true already creates an index
 designSchema.index({ 'metadata.email': 1 });
 designSchema.index({ isPublic: 1, createdAt: -1 });
 designSchema.index({ 'metadata.isDeleted': 1, createdAt: -1 });
 
 // Instance method to generate shareable URL
-designSchema.methods.getShareableUrl = function() {
+designSchema.methods.getShareableUrl = function () {
   const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   return `${baseUrl}/design/${this.shareableId}`;
 };
 
 // Instance method to check if design is editable
-designSchema.methods.isEditableBy = function(email: string) {
+designSchema.methods.isEditableBy = function (email: string) {
   return this.metadata.email === email || this.isPublic;
 };
 

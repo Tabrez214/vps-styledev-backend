@@ -534,8 +534,8 @@ router.get('/order/:orderId', async (req: Request, res: Response) => {
       ]
     })
       .populate('user', 'name email')
-      .populate('address', 'fullName phoneNumber streetAddress city state country postalCode')
-      .populate('items.productId', 'name')
+      .populate('address', 'name fullName phoneNumber phone streetAddress street city state country postalCode zipCode gstNumber')
+      .populate('items.productId', 'name images')
       .populate('invoice', 'invoiceNumber status');
 
     if (!order) {
@@ -546,47 +546,35 @@ router.get('/order/:orderId', async (req: Request, res: Response) => {
       return;
     }
 
-    // Format order data for invoice creation
-    const orderData = {
+    // Import the standardized mapper
+    const { mapOrderToInvoice, standardizeInvoiceData } = await import('../utils/orderToInvoiceMapper');
+    
+    // Convert order to invoice format using standardized mapper
+    const invoiceData = mapOrderToInvoice(order as any);
+    
+    // Add additional metadata for frontend
+    const standardizedData = standardizeInvoiceData({
+      ...invoiceData,
       _id: order._id,
-      orderId: order.order_id,
-      name: order.name,
-      totalAmount: order.totalAmount,
-      subtotal: order.subtotal,
-      discountAmount: order.discountAmount || 0,
-      status: order.status,
-      date: order.createdAt,
       hasInvoice: !!order.invoice,
-      purchaseOrderNumber: order.purchaseOrderNumber,
       existingInvoice: order.invoice ? {
         invoiceNumber: (order.invoice as any).invoiceNumber,
-        status: (order.invoice as any).status
+        status: (order.invoice as any).status,
+        _id: (order.invoice as any)._id
       } : null,
-      customer: {
-        name: (order.user as any)?.name || 'Unknown',
-        email: (order.user as any)?.email || 'Unknown'
-      },
-      address: order.address ? {
-        fullName: (order.address as any).fullName,
-        phoneNumber: (order.address as any).phoneNumber,
-        streetAddress: (order.address as any).streetAddress,
-        city: (order.address as any).city,
-        state: (order.address as any).state,
-        country: (order.address as any).country,
-        postalCode: (order.address as any).postalCode
-      } : null,
-      items: order.items.map((item: any) => ({
-        productId: item.productId?._id,
-        productName: item.productId?.name || 'Product',
-        quantity: item.quantity,
-        price: item.price,
-        total: item.price * item.quantity
-      }))
-    };
+      // Original order data for reference
+      originalOrder: {
+        _id: order._id,
+        order_id: order.order_id,
+        status: order.status,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt
+      }
+    });
 
     res.json({
       success: true,
-      data: orderData
+      data: standardizedData
     });
     return;
   } catch (error) {
