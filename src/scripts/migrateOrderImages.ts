@@ -27,7 +27,7 @@ export async function migrateOrderImages(batchSize: number = 50): Promise<Migrat
   try {
     // Connect to MongoDB if not already connected
     if (mongoose.connection.readyState !== 1) {
-      await mongoose.connect(config.DB_URI);
+      await mongoose.connect(config.MONGODB_URI);
       console.log('Connected to MongoDB for migration');
     }
 
@@ -46,10 +46,10 @@ export async function migrateOrderImages(batchSize: number = 50): Promise<Migrat
       const orders = await Order.find({
         'items.primaryImage': { $exists: false }
       })
-      .select('_id items')
-      .limit(batchSize)
-      .skip(skip)
-      .lean();
+        .select('_id items')
+        .limit(batchSize)
+        .skip(skip)
+        .lean();
 
       if (orders.length === 0) {
         hasMore = false;
@@ -96,7 +96,8 @@ export async function migrateOrderImages(batchSize: number = 50): Promise<Migrat
               itemsUpdated++;
 
             } catch (itemError) {
-              console.warn(`⚠️ Failed to migrate item in order ${order._id}:`, itemError);
+              const itemErrorMessage = itemError instanceof Error ? itemError.message : String(itemError);
+              console.warn(`⚠️ Failed to migrate item in order ${(order._id as any).toString()}: ${itemErrorMessage}`);
               // Keep original item if migration fails
               updatedItems.push(item);
             }
@@ -125,7 +126,8 @@ export async function migrateOrderImages(batchSize: number = 50): Promise<Migrat
 
         } catch (orderError) {
           stats.failedOrders++;
-          const errorMsg = `Failed to migrate order ${order._id}: ${orderError.message}`;
+          const errorMessage = orderError instanceof Error ? orderError.message : String(orderError);
+          const errorMsg = `Failed to migrate order ${(order._id as any).toString()}: ${errorMessage}`;
           stats.errors.push(errorMsg);
           console.error(`❌ ${errorMsg}`);
         }
@@ -175,7 +177,7 @@ export async function rollbackImageMigration(): Promise<void> {
 // CLI execution
 if (require.main === module) {
   const command = process.argv[2];
-  
+
   if (command === 'migrate') {
     const batchSize = parseInt(process.argv[3]) || 50;
     migrateOrderImages(batchSize)

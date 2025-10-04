@@ -28,11 +28,12 @@ class OrderImageSolutionTester {
   async connectToDatabase(): Promise<void> {
     try {
       if (mongoose.connection.readyState !== 1) {
-        await mongoose.connect(config.DB_URI);
+        await mongoose.connect(config.MONGODB_URI);
         console.log('🔗 Connected to MongoDB for testing');
       }
     } catch (error) {
-      throw new Error(`Database connection failed: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Database connection failed: ${errorMessage}`);
     }
   }
 
@@ -58,13 +59,13 @@ class OrderImageSolutionTester {
         'Sample Product Test',
         true,
         `Found test product: ${sampleProduct.name}`,
-        { productId: sampleProduct._id, colorsCount: sampleProduct.colors?.length }
+        { productId: (sampleProduct._id as any).toString(), colorsCount: sampleProduct.colors?.length }
       );
 
       // Test 2: Test image enrichment with valid product
       const testColor = sampleProduct.colors?.[0]?.name || 'default';
       const enrichmentResult = await enrichOrderItemWithImages(
-        sampleProduct._id.toString(),
+        (sampleProduct._id as any).toString(),
         testColor,
         sampleProduct.name
       );
@@ -95,18 +96,20 @@ class OrderImageSolutionTester {
           { placeholderUrl: invalidResult.primaryImage.url }
         );
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         this.addResult(
           'Invalid Product Test',
           false,
-          `Error handling invalid product: ${error.message}`
+          `Error handling invalid product: ${errorMessage}`
         );
       }
 
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       this.addResult(
         'Image Enrichment Service Test',
         false,
-        `Test failed: ${error.message}`
+        `Test failed: ${errorMessage}`
       );
     }
   }
@@ -136,7 +139,7 @@ class OrderImageSolutionTester {
         totalAmount: 100,
         address: new mongoose.Types.ObjectId(),
         items: [{
-          productId: sampleProduct._id,
+          productId: sampleProduct._id as any,
           productName: sampleProduct.name,
           quantity: 1,
           pricePerItem: 100,
@@ -170,17 +173,18 @@ class OrderImageSolutionTester {
         'Enhanced Order Creation',
         true,
         'Successfully created order with enhanced image structure',
-        { orderId: testOrder._id, itemsCount: testOrder.items.length }
+        { orderId: (testOrder._id as any).toString(), itemsCount: testOrder.items.length }
       );
 
       // Clean up test order
       await Order.findByIdAndDelete(testOrder._id);
 
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       this.addResult(
         'Order Creation Test',
         false,
-        `Order creation failed: ${error.message}`
+        `Order creation failed: ${errorMessage}`
       );
     }
   }
@@ -206,10 +210,11 @@ class OrderImageSolutionTester {
       );
 
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       this.addResult(
         'Image Health Check',
         false,
-        `Health check failed: ${error.message}`
+        `Health check failed: ${errorMessage}`
       );
     }
   }
@@ -222,14 +227,14 @@ class OrderImageSolutionTester {
       const legacyOrder = await Order.findOne({
         'items.primaryImage': { $exists: false },
         'items.0': { $exists: true }
-      }).lean();
+      }).lean() as any;
 
       if (legacyOrder) {
         this.addResult(
           'Legacy Order Detection',
           true,
           'Found orders with legacy structure',
-          { orderId: legacyOrder._id, itemsCount: legacyOrder.items.length }
+          { orderId: legacyOrder._id.toString(), itemsCount: legacyOrder.items.length }
         );
 
         // Test reading legacy order items
@@ -252,10 +257,11 @@ class OrderImageSolutionTester {
       }
 
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       this.addResult(
         'Backward Compatibility Test',
         false,
-        `Compatibility test failed: ${error.message}`
+        `Compatibility test failed: ${errorMessage}`
       );
     }
   }
@@ -279,26 +285,28 @@ class OrderImageSolutionTester {
           // Import the normalize function (would need to adjust path in real implementation)
           const { normalizeImageUrl } = require('../utils/image');
           const normalized = normalizeImageUrl(url);
-          
+
           this.addResult(
             `URL Normalization - ${url || 'empty'}`,
             typeof normalized === 'string',
             `Normalized to: ${normalized}`
           );
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           this.addResult(
             `URL Normalization - ${url || 'empty'}`,
             false,
-            `Failed to normalize: ${error.message}`
+            `Failed to normalize: ${errorMessage}`
           );
         }
       }
 
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       this.addResult(
         'Image URL Resolution Test',
         false,
-        `URL resolution test failed: ${error.message}`
+        `URL resolution test failed: ${errorMessage}`
       );
     }
   }
@@ -327,7 +335,7 @@ class OrderImageSolutionTester {
         console.log('\n🎉 All tests passed! The order image solution is working correctly.');
       } else {
         console.log('\n⚠️ Some tests failed. Please review the issues above.');
-        
+
         // List failed tests
         console.log('\nFailed tests:');
         this.results.filter(r => !r.success).forEach(result => {
@@ -336,7 +344,8 @@ class OrderImageSolutionTester {
       }
 
     } catch (error) {
-      console.error('💥 Test suite failed:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('💥 Test suite failed:', errorMessage);
     } finally {
       if (mongoose.connection.readyState === 1) {
         await mongoose.connection.close();

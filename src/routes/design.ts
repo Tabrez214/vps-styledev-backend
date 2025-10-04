@@ -3,7 +3,7 @@ import express, { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import Design from '../models/design';
-import { generatePreviewImages } from '../utils/image';
+import { generatePreviewImages } from '../services/design-studio/image';
 import { sendDesignEmail } from '../utils/email';
 import { calculateDesignDimensions } from '../utils/design';
 
