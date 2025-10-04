@@ -53,8 +53,11 @@ const allowedOrigins = [
   'http://82.29.160.117:3000',
   'https://styledev.in',
   'http://styledev.in',
+  'https://www.styledev.in',
+  'http://www.styledev.in',
   'http://localhost:3000',
   'http://localhost:3001',
+  'http://localhost:3002',
 ];
 
 console.log('✅ 2. CORS origins defined');
@@ -62,6 +65,7 @@ console.log('✅ 2. CORS origins defined');
 // Middleware setup
 app.use(cors({
   origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or Postman)
     if (!origin) return callback(null, true);
 
     if (allowedOrigins.indexOf(origin) === -1) {
@@ -72,8 +76,19 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'x-csrf-token', 'x-session-id']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'x-csrf-token', 'x-session-id'],
+  optionsSuccessStatus: 200, // Some legacy browsers choke on 204
+  preflightContinue: false // Pass control to next handler
 }));
+
+// Handle OPTIONS requests explicitly
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, x-csrf-token, x-session-id');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.status(200).send();
+});
 
 // Increase body size limits for design studio uploads
 app.use(express.json({ limit: '50mb' }));
