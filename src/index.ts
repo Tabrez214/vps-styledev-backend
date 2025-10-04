@@ -86,22 +86,33 @@ app.use(cors({
   preflightContinue: false // Pass control to next handler
 }));
 
-// Handle OPTIONS requests explicitly
-app.options('*', (req, res) => {
-  const origin = req.headers.origin;
-  if ((origin && allowedOrigins.includes(origin)) || !origin) {
-    res.header('Access-Control-Allow-Origin', origin || '*');
-  }
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, x-csrf-token, x-session-id, x-razorpay-signature');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.status(200).send();
-});
-
 // Special handling for Razorpay webhooks (no CORS needed)
 app.use('/api/payment/webhook', (req, res, next) => {
   // Razorpay webhooks don't need CORS as they're server-to-server
   res.header('Access-Control-Allow-Origin', '*');
+  next();
+});
+
+// Add CORS headers to all requests
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  console.log(`🔍 ${req.method} request to ${req.url} from origin:`, origin);
+  
+  if ((origin && allowedOrigins.includes(origin)) || !origin) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
+  
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, x-csrf-token, x-session-id, x-razorpay-signature');
+  
+  // Handle OPTIONS preflight requests
+  if (req.method === 'OPTIONS') {
+    console.log('✅ Handling OPTIONS preflight for:', req.url);
+    res.status(200).send();
+    return;
+  }
+  
   next();
 });
 
@@ -278,6 +289,16 @@ app.get('/', (req, res) => {
 // Use the auth router for '/auth' routes
 app.use('/auth', authRouter);
 app.use('/auth', serverTimeRoutes);
+
+// Debug: List all registered routes
+console.log('🔍 Registered routes:');
+app._router.stack.forEach((middleware: { route: { methods: any; path: any; }; name: string; regexp: any; }, index: any) => {
+  if (middleware.route) {
+    console.log(`  ${middleware.route.methods} ${middleware.route.path}`);
+  } else if (middleware.name === 'router') {
+    console.log(`  Router mounted at: ${middleware.regexp}`);
+  }
+});
 
 // Use the user router for '/user' routes
 app.use('/user', userRouter);

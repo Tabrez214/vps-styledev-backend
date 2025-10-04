@@ -20,6 +20,14 @@ router.get('/server-time', (req: Request, res: Response) => {
 /**
  * Get CSRF token for frontend
  */
-router.get('/csrf-token', getCSRFToken);
+router.get('/csrf-token', (req, res, next) => {
+  console.log('🔍 CSRF token request received:', {
+    method: req.method,
+    url: req.url,
+    origin: req.headers.origin,
+    headers: Object.keys(req.headers)
+  });
+  getCSRFToken(req, res);
+});
 
 export default router;
