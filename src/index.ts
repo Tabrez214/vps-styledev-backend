@@ -58,6 +58,11 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:3002',
+  'https://api.razorpay.com',
+  'https://checkout.razorpay.com',
+  'https://lumberjack.razorpay.com',
+  'https://fonts.googleapis.com',
+  'https://fonts.gstatic.com',
 ];
 
 console.log('✅ 2. CORS origins defined');
@@ -83,11 +88,21 @@ app.use(cors({
 
 // Handle OPTIONS requests explicitly
 app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  const origin = req.headers.origin;
+  if ((origin && allowedOrigins.includes(origin)) || !origin) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  }
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, x-csrf-token, x-session-id');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, x-csrf-token, x-session-id, x-razorpay-signature');
   res.header('Access-Control-Allow-Credentials', 'true');
   res.status(200).send();
+});
+
+// Special handling for Razorpay webhooks (no CORS needed)
+app.use('/api/payment/webhook', (req, res, next) => {
+  // Razorpay webhooks don't need CORS as they're server-to-server
+  res.header('Access-Control-Allow-Origin', '*');
+  next();
 });
 
 // Increase body size limits for design studio uploads
