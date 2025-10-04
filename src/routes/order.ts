@@ -5,6 +5,7 @@ import Order from "../models/order"
 import Product from "../models/product"
 import Address from "../models/address"
 import DiscountCode from "../models/discount-codes"
+import { enrichOrderItemWithImages, batchEnrichOrderItems } from "../services/imageEnrichmentService"
 // import { OrderLinkingService } from "../services/orderLinkingService"
 // import { StatusManagementService } from "../services/statusManagementService"
 // import { statusUpdateMiddleware } from "../middleware/statusValidationMiddleware"
@@ -43,7 +44,7 @@ router.get("/", authMiddleware, async (req: RequestWithUser, res: Response) => {
       .select('order_id subtotal discountAmount totalAmount status createdAt items address billingAddress user name')
       .populate({
         path: 'items.productId',
-        select: 'name images',
+        select: 'name images colors',
         model: 'Product'
       })
       .populate({
@@ -115,13 +116,45 @@ router.get("/", authMiddleware, async (req: RequestWithUser, res: Response) => {
           email: customerEmail,
           phone: customerPhone
         },
-        items: order.items.map((item: any) => ({
-          productName: item.productId?.name || 'Product not found',
-          quantity: item.quantity,
-          pricePerItem: item.price,
-          totalPrice: item.price * item.quantity,
-          image: item.productId?.images?.find((img: any) => img.isDefault)?.url || item.productId?.images?.[0]?.url || null
-        })),
+        items: order.items.map((item: any) => {
+          // Get image from colors array (priority) or fallback to general images
+          let imageUrl = null;
+          
+          if (item.productId?.colors && Array.isArray(item.productId.colors)) {
+            // Try to find image from colors array - use first color with images
+            const colorWithImages = item.productId.colors.find((color: any) => 
+              color.images && color.images.length > 0
+            );
+            
+            if (colorWithImages) {
+              const defaultImage = colorWithImages.images.find((img: any) => img.isDefault);
+              imageUrl = defaultImage?.url || colorWithImages.images[0]?.url;
+            }
+          }
+          
+          // Fallback to general product images if no color images found
+          if (!imageUrl && item.productId?.images && item.productId.images.length > 0) {
+            const defaultImage = item.productId.images.find((img: any) => img.isDefault);
+            imageUrl = defaultImage?.url || item.productId.images[0]?.url;
+          }
+
+          return {
+            productName: item.productId?.name || 'Product not found',
+            quantity: item.quantity,
+            pricePerItem: item.pricePerItem || item.price, // Use correct field name
+            totalPrice: item.totalPrice || (item.price * item.quantity),
+            color: item.color || 'N/A', // Add color information
+            size: item.size || 'N/A', // Add size information  
+            image: imageUrl,
+            // Include product data for frontend image fallback
+            product: item.productId ? {
+              _id: item.productId._id,
+              name: item.productId.name,
+              images: item.productId.images || [],
+              colors: item.productId.colors || []
+            } : null
+          };
+        }),
         // Address information
         shippingAddress: addressData ? {
           fullName: addressData.fullName || addressData.name,
@@ -167,18 +200,36 @@ router.post("/", authMiddleware, async (req: RequestWithUser, res) => {
 
     let subtotal = 0
     const orderItems = await Promise.all(
-      products.map(async (item: { product: string; size: string; quantity: number }) => {
+      products.map(async (item: { product: string; size: string; quantity: number; color?: string }) => {
         const product = await Product.findById(item.product)
         if (!product) {
           throw new Error(`Product ${item.product} not found`)
         }
+        
         const price = product.pricePerItem * item.quantity
         subtotal += price
 
+        // Enrich with image data
+        const imageData = await enrichOrderItemWithImages(
+          item.product,
+          item.color || 'default',
+          product.name
+        )
+
         return {
           productId: item.product,
+          productName: product.name,
           quantity: item.quantity,
-          price: product.pricePerItem
+          pricePerItem: product.pricePerItem,
+          totalPrice: price,
+          size: item.size,
+          color: item.color || 'default',
+          // Enhanced image storage
+          primaryImage: imageData.primaryImage,
+          fallbackImages: imageData.fallbackImages,
+          imageMetadata: imageData.imageMetadata,
+          // Legacy field for backward compatibility
+          image: imageData.primaryImage.url,
         }
       }),
     )

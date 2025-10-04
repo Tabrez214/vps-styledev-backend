@@ -8,7 +8,10 @@
     "build": "tsc",
     "start": "node dist/src/index.js",
     "migration:week1": "ts-node src/scripts/week1-migration.ts",
-    "migration:week1:dry-run": "ts-node src/scripts/week1-migration.ts --dry-run"
+    "migration:week1:dry-run": "ts-node src/scripts/week1-migration.ts --dry-run",
+    "migrate:images": "ts-node src/scripts/migrateOrderImages.ts",
+    "test:images": "ts-node src/scripts/testOrderImageSolution.ts",
+    "health:images": "ts-node -e \"require('./src/services/imageHealthService').runImageHealthCheck()\""
   },
   "keywords": [],
   "author": "",

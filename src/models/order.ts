@@ -178,8 +178,62 @@ const orderSchema = new mongoose.Schema(
       },
       size: {                            // Use standard size enum
         type: String,
+        enum: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
         required: true,
-        enum: STANDARD_SIZES
+        trim: true
+      },
+      // Enhanced Image Storage - New fields for complete image management
+      productName: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      primaryImage: {
+        url: {
+          type: String,
+          required: true,
+        },
+        alt: {
+          type: String,
+          default: "",
+        },
+        imageId: {
+          type: String,
+          default: "",
+        },
+      },
+      fallbackImages: [{
+        url: {
+          type: String,
+          required: true,
+        },
+        alt: {
+          type: String,
+          default: "",
+        },
+        imageId: {
+          type: String,
+          default: "",
+        },
+      }],
+      imageMetadata: {
+        colorId: {
+          type: String,
+          default: "",
+        },
+        totalImagesAvailable: {
+          type: Number,
+          default: 0,
+        },
+        lastUpdated: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+      // Legacy fields for backward compatibility
+      image: {
+        type: String,
+        default: "",
       },
       designData: {                      // For design order specific data
         type: mongoose.Schema.Types.Mixed,
