@@ -53,17 +53,17 @@ const allowedOrigins = [
   // Production domains (always allowed)
   'https://styledev.in',
   'https://www.styledev.in',
-  
+
   // Development access (restricted by IP)
   'http://localhost:3000',
-  'http://localhost:3001', 
+  'http://localhost:3001',
   'http://localhost:3002',
   'https://localhost:3000',
   'https://localhost:3001',
   'http://82.29.160.117:3000', // Your server IP
   'http://styledev.in',
   'http://www.styledev.in',
-  
+
   // External services (always needed)
   'https://api.razorpay.com',
   'https://checkout.razorpay.com',
@@ -81,7 +81,7 @@ app.use(cors({
   origin: function (origin, callback) {
     // Note: IP information is not available in CORS origin function
     const clientIP = 'unknown';
-    
+
     // Allow requests with no origin from trusted sources
     if (!origin) {
       // console.log(`✅ Allowing request with no origin from IP: ${clientIP}`); // Removed for production
@@ -95,14 +95,14 @@ app.use(cors({
       console.error('📋 Allowed origins:', allowedOrigins);
       return callback(new Error(msg), false);
     }
-    
+
     // Additional security for localhost origins
     if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
       // Log localhost access for monitoring
       console.warn(`⚠️  Localhost access granted for origin: ${origin} from IP: ${clientIP}`);
       console.warn(`🔍 Monitor this access - consider IP whitelisting for production security`);
     }
-    
+
     // console.log(`✅ CORS allowed for origin: ${origin} from IP: ${clientIP}`); // Removed for production
     return callback(null, true);
   },
@@ -124,22 +124,22 @@ app.use('/api/payment/webhook', (req, res, next) => {
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   // console.log(`🔍 ${req.method} request to ${req.url} from origin:`, origin); // Removed for production
-  
+
   if ((origin && allowedOrigins.includes(origin)) || !origin) {
     res.header('Access-Control-Allow-Origin', origin || '*');
     res.header('Access-Control-Allow-Credentials', 'true');
   }
-  
+
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, x-csrf-token, x-session-id, x-razorpay-signature');
-  
+
   // Handle OPTIONS preflight requests
   if (req.method === 'OPTIONS') {
     console.log('✅ Handling OPTIONS preflight for:', req.url);
     res.status(200).send();
     return;
   }
-  
+
   next();
 });
 
@@ -315,7 +315,7 @@ app.get('/', (req, res) => {
 
 // Use the auth router for '/auth' routes
 app.use('/auth', authRouter);
-app.use('/auth', serverTimeRoutes);
+app.use('/', serverTimeRoutes);
 
 // Debug: List all registered routes
 console.log('🔍 Registered routes:');
