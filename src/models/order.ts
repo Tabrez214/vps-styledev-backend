@@ -26,7 +26,6 @@ interface IOrderItem {
   product?: {                          // Optional populated product data
     _id: mongoose.Types.ObjectId;
     name: string;
-    images?: string[];
   };
   designId?: mongoose.Types.ObjectId;
   quantity: number;
@@ -48,6 +47,7 @@ export interface IOrder extends Document {
   order_id: string;
   user: mongoose.Types.ObjectId;
   address: any; // Mixed type - can be ObjectId or direct object
+  shippingAddress?: IBillingAddress;
   isExpressCheckout: boolean;
   isGuestOrder: boolean;
   billingAddress?: IBillingAddress;
@@ -119,6 +119,17 @@ const orderSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.Mixed, // Made flexible to support both ObjectId and direct address objects
       required: true,
     },
+    shippingAddress: {
+      name: { type: String, required: false, trim: true }, // Made optional for express checkout
+      email: { type: String, required: false, trim: true, lowercase: true },
+      phone: { type: String, required: false, trim: true },
+      street: { type: String, required: false, trim: true }, // Made optional for express checkout
+      city: { type: String, required: false, trim: true },
+      state: { type: String, required: false, trim: true },
+      zipCode: { type: String, required: false, trim: true }, // Made optional for express checkout
+      country: { type: String, required: false, trim: true, default: 'India' },
+      gstNumber: { type: String, required: false, trim: true }, // For invoice generation
+    },
     // Express checkout and guest order fields
     isExpressCheckout: {
       type: Boolean,
@@ -130,15 +141,15 @@ const orderSchema = new mongoose.Schema(
     },
     // Billing address from payment gateway (for express checkout) - Standardized
     billingAddress: {
-      name: { type: String, required: true, trim: true },
-      email: { type: String, trim: true, lowercase: true },
-      phone: { type: String, trim: true },
-      street: { type: String, required: true, trim: true }, // Standardized field name
-      city: { type: String, required: true, trim: true },
-      state: { type: String, required: true, trim: true },
-      zipCode: { type: String, required: true, trim: true }, // Standardized field name
-      country: { type: String, required: true, trim: true, default: 'India' },
-      gstNumber: { type: String, trim: true }, // For invoice generation
+      name: { type: String, required: false, trim: true }, // Made optional for express checkout
+      email: { type: String, required: false, trim: true, lowercase: true },
+      phone: { type: String, required: false, trim: true },
+      street: { type: String, required: false, trim: true }, // Made optional for express checkout
+      city: { type: String, required: false, trim: true },
+      state: { type: String, required: false, trim: true },
+      zipCode: { type: String, required: false, trim: true }, // Made optional for express checkout
+      country: { type: String, required: false, trim: true, default: 'India' },
+      gstNumber: { type: String, required: false, trim: true }, // For invoice generation
     },
     items: [{
       productId: {
@@ -148,8 +159,7 @@ const orderSchema = new mongoose.Schema(
       },
       product: {
         _id: { type: mongoose.Schema.Types.ObjectId },
-        name: { type: String },
-        images: [{ type: String }]
+        name: { type: String }
       },
       designId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -178,20 +188,20 @@ const orderSchema = new mongoose.Schema(
       },
       size: {                            // Use standard size enum
         type: String,
-        enum: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
+        enum: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '2XL', '3XL'],
         required: true,
         trim: true
       },
       // Enhanced Image Storage - New fields for complete image management
       productName: {
         type: String,
-        required: true,
+        required: false, // Made optional for express checkout compatibility
         trim: true,
       },
       primaryImage: {
         url: {
           type: String,
-          required: true,
+          required: false, // Made optional for express checkout compatibility
         },
         alt: {
           type: String,

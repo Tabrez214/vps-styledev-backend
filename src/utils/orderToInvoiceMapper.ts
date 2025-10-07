@@ -129,27 +129,38 @@ export function mapOrderToInvoice(order: PopulatedOrder): Partial<IInvoice> {
  */
 function extractCustomerInfo(order: PopulatedOrder) {
   // Priority: address data > billing address > user data > express checkout metadata
-  const addressData = typeof order.address === 'object' ? order.address : {};
+  const addressData = (typeof order.address === 'object' && order.address !== null && !(order.address as any)._id)
+    ? order.address
+    : {};
   const billingData = (order.billingAddress as any) || {};
-  const userData = order.user || {};
+  const userData = (typeof order.user === 'object' && order.user !== null) ? order.user : {};
   const expressData = (order.expressCheckoutMetadata as any) || {};
 
+  console.log('🔍 [INVOICE MAPPER] Extracting customer info:', {
+    hasAddress: !!order.address,
+    addressType: typeof order.address,
+    addressData,
+    hasBilling: !!order.billingAddress,
+    hasUser: !!order.user,
+    userData
+  });
+
   return {
-    name: addressData.name ||
-      addressData.fullName ||
+    name: (addressData as any).name ||
+      (addressData as any).fullName ||
       billingData.name ||
-      userData.name ||
+      (userData as any).name ||
       order.name ||
       'Unknown Customer',
 
-    email: addressData.email ||
+    email: (addressData as any).email ||
       billingData.email ||
-      userData.email ||
+      (userData as any).email ||
       expressData.originalEmail ||
       'Unknown Email',
 
-    phone: addressData.phone ||
-      addressData.phoneNumber ||
+    phone: (addressData as any).phone ||
+      (addressData as any).phoneNumber ||
       billingData.phone ||
       'Unknown Phone'
   };
@@ -166,17 +177,27 @@ function extractAddressInfo(order: PopulatedOrder) {
       formatted: order.address,
       gstNumber: order.billingAddress?.gstNumber || undefined
     };
-  } else if (order.address && typeof order.address === 'object') {
+  } else if (order.address && typeof order.address === 'object' && !(order.address as any)._id) {
+    // Direct embedded address object (not a reference)
     addressObj = order.address;
   } else if (order.billingAddress) {
     addressObj = order.billingAddress;
+  } else if (order.shippingAddress) {
+    addressObj = order.shippingAddress;
   }
+
+  console.log('🔍 [INVOICE MAPPER] Extracting address:', {
+    hasAddress: !!order.address,
+    hasBilling: !!order.billingAddress,
+    hasShipping: !!order.shippingAddress,
+    addressObj
+  });
 
   // Handle different address field variations
   const street = addressObj.street ||
     addressObj.streetAddress ||
     addressObj.address ||
-    addressObj.fullName || '';
+    '';
   const city = addressObj.city || '';
   const state = addressObj.state || '';
   const zipCode = addressObj.zipCode ||
@@ -195,8 +216,12 @@ function extractAddressInfo(order: PopulatedOrder) {
   }
   if (country && country !== 'India') addressParts.push(country);
 
+  const formatted = addressParts.length > 0 ? addressParts.join('\n') : 'Address not provided';
+
+  console.log('🔍 [INVOICE MAPPER] Formatted address:', formatted);
+
   return {
-    formatted: addressParts.length > 0 ? addressParts.join('\n') : 'Address not provided',
+    formatted,
     gstNumber: addressObj.gstNumber || order.billingAddress?.gstNumber
   };
 }
@@ -209,14 +234,35 @@ function extractInvoiceItems(order: PopulatedOrder): IInvoiceItem[] {
     return [];
   }
 
-  return order.items.map((item, index) => {
+  return order.items.map((item: any, index) => {
     // Handle different item types (product orders vs design orders)
     let description = 'Custom Item';
     let image = '';
     let isDesignItem = false;
 
-    if (item.productId && typeof item.productId === 'object') {
-      // Regular product order
+    console.log(`🔍 [INVOICE MAPPER] Processing item ${index}:`, {
+      hasProductName: !!item.productName,
+      hasPrimaryImage: !!item.primaryImage,
+      primaryImageUrl: item.primaryImage?.url,
+      hasImage: !!item.image,
+      hasProductId: !!item.productId,
+      productIdType: typeof item.productId,
+      pricePerItem: item.pricePerItem,
+      totalPrice: item.totalPrice,
+      quantity: item.quantity
+    });
+
+    // Check for productName field (new order structure)
+    if (item.productName) {
+      description = item.productName;
+      // Get image from primaryImage object or fallback to image field
+      if (item.primaryImage && item.primaryImage.url) {
+        image = item.primaryImage.url;
+      } else if (item.image) {
+        image = item.image;
+      }
+    } else if (item.productId && typeof item.productId === 'object') {
+      // Regular product order (legacy structure)
       description = item.productId.name || 'Custom Product';
       image = item.productId.images?.[0] || '';
     } else if (item.designData) {
@@ -231,6 +277,14 @@ function extractInvoiceItems(order: PopulatedOrder): IInvoiceItem[] {
     const quantity = item.quantity || 1;
     const totalPriceInclusive = item.totalPrice || (quantity * pricePerItemInclusive);
 
+    console.log(`🔍 [INVOICE MAPPER] Item ${index} prices:`, {
+      pricePerItemInclusive,
+      quantity,
+      totalPriceInclusive,
+      description,
+      image
+    });
+
     // Calculate GST breakdown for this item (prices include GST)
     const GST_RATE = 0.18;
     const totalPriceExclusive = totalPriceInclusive / (1 + GST_RATE);
@@ -240,30 +294,28 @@ function extractInvoiceItems(order: PopulatedOrder): IInvoiceItem[] {
     const size = item.size || extractSizeFromItem(item);
     const color = item.color || extractColorFromItem(item);
 
-    // Add size and color to description for clarity if they're meaningful
-    if (size !== 'M' || color !== 'White') {
-      const specs = [];
-      if (size !== 'M') specs.push(size);
-      if (color !== 'White') specs.push(color);
-      if (specs.length > 0) {
-        description = `${description} (${specs.join(', ')})`;
-      }
-    }
+    // Build description with size and color info
+    const descriptionParts = [description];
+    if (size) descriptionParts.push(size);
+    const finalDescription = descriptionParts.join(' - ');
 
-    return {
+    const invoiceItem = {
       id: `item_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 6)}`,
-      description,
+      description: finalDescription,
       size: size as any, // Cast to StandardSize
       color,
       customColor: '',
       quantity,
       unitPrice: pricePerItemExclusive,  // Price excluding GST
       total: totalPriceExclusive,        // Total excluding GST
-      totalInclusiveGST: totalPriceInclusive, // Store original inclusive price for reference
       image,
       isDesignItem,
       designData: isDesignItem ? item.designData : undefined
-    };
+    } as IInvoiceItem;
+
+    console.log(`🔍 [INVOICE MAPPER] Item ${index} final:`, invoiceItem);
+
+    return invoiceItem;
   });
 }
 

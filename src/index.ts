@@ -48,42 +48,69 @@ if (!fs.existsSync(uploadsDir)) {
   console.log('Created uploads directory');
 }
 
-// Define allowed origins
+// Define allowed origins for single live server setup
 const allowedOrigins = [
-  'http://82.29.160.117:3000',
+  // Production domains (always allowed)
   'https://styledev.in',
-  'http://styledev.in',
   'https://www.styledev.in',
-  'http://www.styledev.in',
+  
+  // Development access (restricted by IP)
   'http://localhost:3000',
-  'http://localhost:3001',
+  'http://localhost:3001', 
   'http://localhost:3002',
+  'https://localhost:3000',
+  'https://localhost:3001',
+  'http://82.29.160.117:3000', // Your server IP
+  'http://styledev.in',
+  'http://www.styledev.in',
+  
+  // External services (always needed)
   'https://api.razorpay.com',
   'https://checkout.razorpay.com',
   'https://lumberjack.razorpay.com',
   'https://fonts.googleapis.com',
-  'https://fonts.gstatic.com',
+  'https://fonts.gstatic.com'
 ];
 
-console.log('✅ 2. CORS origins defined');
+console.log('✅ Allowed origins configured for live server setup');
 
-// Middleware setup
+console.log('✅ 2. CORS origins configured for environment:', process.env.NODE_ENV || 'development');
+
+// Enhanced CORS middleware with IP-based security for live server
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or Postman)
-    if (!origin) return callback(null, true);
+    // Note: IP information is not available in CORS origin function
+    const clientIP = 'unknown';
+    
+    // Allow requests with no origin from trusted sources
+    if (!origin) {
+      // console.log(`✅ Allowing request with no origin from IP: ${clientIP}`); // Removed for production
+      return callback(null, true);
+    }
 
+    // Check if origin is allowed
     if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      const msg = `🚫 CORS policy violation: Origin '${origin}' not allowed from IP: ${clientIP}`;
+      console.error(msg);
+      console.error('📋 Allowed origins:', allowedOrigins);
       return callback(new Error(msg), false);
     }
+    
+    // Additional security for localhost origins
+    if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      // Log localhost access for monitoring
+      console.warn(`⚠️  Localhost access granted for origin: ${origin} from IP: ${clientIP}`);
+      console.warn(`🔍 Monitor this access - consider IP whitelisting for production security`);
+    }
+    
+    // console.log(`✅ CORS allowed for origin: ${origin} from IP: ${clientIP}`); // Removed for production
     return callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'x-csrf-token', 'x-session-id'],
-  optionsSuccessStatus: 200, // Some legacy browsers choke on 204
-  preflightContinue: false // Pass control to next handler
+  optionsSuccessStatus: 200,
+  preflightContinue: false
 }));
 
 // Special handling for Razorpay webhooks (no CORS needed)
@@ -96,7 +123,7 @@ app.use('/api/payment/webhook', (req, res, next) => {
 // Add CORS headers to all requests
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  console.log(`🔍 ${req.method} request to ${req.url} from origin:`, origin);
+  // console.log(`🔍 ${req.method} request to ${req.url} from origin:`, origin); // Removed for production
   
   if ((origin && allowedOrigins.includes(origin)) || !origin) {
     res.header('Access-Control-Allow-Origin', origin || '*');

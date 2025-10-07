@@ -41,10 +41,10 @@ router.get("/", authMiddleware, async (req: RequestWithUser, res: Response) => {
     });
 
     const orders = await Order.find(query)
-      .select('order_id subtotal discountAmount totalAmount status createdAt items address billingAddress user name')
+      .select('order_id subtotal discountAmount totalAmount status createdAt items address shippingAddress billingAddress user name')
       .populate({
         path: 'items.productId',
-        select: 'name images colors',
+        select: 'name images colors pricePerItem',
         model: 'Product'
       })
       .populate({
@@ -66,86 +66,124 @@ router.get("/", authMiddleware, async (req: RequestWithUser, res: Response) => {
     const cleanedOrders = orders.map(order => {
       // Handle address - could be populated reference or direct object
       let addressData = null;
-      if (order.address) {
-        if (typeof order.address === 'object' && order.address._id) {
+      if ((order as any).address) {
+        if (typeof (order as any).address === 'object' && (order as any).address._id) {
           // Populated address reference
-          addressData = order.address;
-        } else if (typeof order.address === 'object') {
+          addressData = (order as any).address;
+        } else if (typeof (order as any).address === 'object') {
           // Direct address object (like in express checkout)
-          addressData = order.address;
+          addressData = (order as any).address;
         }
       }
 
       // Handle billing address
-      let billingAddressData = order.billingAddress || null;
+      let billingAddressData = (order as any).billingAddress || null;
 
       // Get customer info from user, address, or billing address
-      const customerName = (order.user as any)?.name ||
+      const customerName = ((order as any).user as any)?.name ||
         addressData?.fullName ||
         addressData?.name ||
         billingAddressData?.name ||
-        order.name ||
+        (order as any).name ||
         'N/A';
 
-      const customerEmail = (order.user as any)?.email ||
+      const customerEmail = ((order as any).user as any)?.email ||
         addressData?.email ||
         billingAddressData?.email ||
         'N/A';
 
-      const customerPhone = (order.user as any)?.phone ||
+      const customerPhone = ((order as any).user as any)?.phone ||
         addressData?.phoneNumber ||
         addressData?.phone ||
         billingAddressData?.phone ||
         'N/A';
 
       return {
-        orderId: order.order_id,
-        subtotal: order.subtotal,
-        discountAmount: order.discountAmount || 0,
-        discountCode: order.discountCode ? {
-          code: (order.discountCode as any).code,
-          type: (order.discountCode as any).discountType,
-          value: (order.discountCode as any).discountValue
+        orderId: (order as any).order_id,
+        subtotal: (order as any).subtotal,
+        discountAmount: (order as any).discountAmount || 0,
+        discountCode: (order as any).discountCode ? {
+          code: ((order as any).discountCode as any).code,
+          type: ((order as any).discountCode as any).discountType,
+          value: ((order as any).discountCode as any).discountValue
         } : null,
-        totalAmount: order.totalAmount,
-        status: order.status,
-        orderDate: order.createdAt,
+        totalAmount: (order as any).totalAmount,
+        status: (order as any).status,
+        orderDate: (order as any).createdAt,
         // Customer information
         customer: {
           name: customerName,
           email: customerEmail,
           phone: customerPhone
         },
-        items: order.items.map((item: any) => {
-          // Get image from colors array (priority) or fallback to general images
+        items: (order as any).items.map((item: any) => {
+          // Priority 1: Use existing primaryImage if available
           let imageUrl = null;
-          
-          if (item.productId?.colors && Array.isArray(item.productId.colors)) {
-            // Try to find image from colors array - use first color with images
-            const colorWithImages = item.productId.colors.find((color: any) => 
-              color.images && color.images.length > 0
-            );
-            
-            if (colorWithImages) {
-              const defaultImage = colorWithImages.images.find((img: any) => img.isDefault);
-              imageUrl = defaultImage?.url || colorWithImages.images[0]?.url;
-            }
-          }
-          
-          // Fallback to general product images if no color images found
-          if (!imageUrl && item.productId?.images && item.productId.images.length > 0) {
-            const defaultImage = item.productId.images.find((img: any) => img.isDefault);
-            imageUrl = defaultImage?.url || item.productId.images[0]?.url;
+          let primaryImage = null;
+          let fallbackImages = [];
+
+          console.log("🖼️ [IMAGE DEBUG] Item image data:", {
+            hasPrimaryImage: !!item.primaryImage,
+            primaryImageUrl: item.primaryImage?.url,
+            hasFallbackImages: !!item.fallbackImages?.length,
+            legacyImage: item.image
+          });
+
+          if (item.primaryImage && item.primaryImage.url) {
+            imageUrl = item.primaryImage.url;
+            primaryImage = item.primaryImage;
+            console.log("✅ [IMAGE DEBUG] Using primaryImage:", imageUrl);
           }
 
-          return {
-            productName: item.productId?.name || 'Product not found',
-            quantity: item.quantity,
-            pricePerItem: item.pricePerItem || item.price, // Use correct field name
-            totalPrice: item.totalPrice || (item.price * item.quantity),
-            color: item.color || 'N/A', // Add color information
-            size: item.size || 'N/A', // Add size information  
-            image: imageUrl,
+          // Priority 2: Use fallbackImages if available
+          if (item.fallbackImages && Array.isArray(item.fallbackImages)) {
+            fallbackImages = item.fallbackImages;
+          }
+
+          // Priority 3: Get image from colors array (fallback) or general images
+          if (!imageUrl) {
+            if (item.productId?.colors && Array.isArray(item.productId.colors)) {
+              // Try to find image from colors array - use first color with images
+              const colorWithImages = item.productId.colors.find((color: any) =>
+                color.images && color.images.length > 0
+              );
+
+              if (colorWithImages) {
+                const defaultImage = colorWithImages.images.find((img: any) => img.isDefault);
+                imageUrl = defaultImage?.url || colorWithImages.images[0]?.url;
+              }
+            }
+
+            // Fallback to general product images if no color images found
+            if (!imageUrl && item.productId?.images && item.productId.images.length > 0) {
+              const defaultImage = item.productId.images.find((img: any) => img.isDefault);
+              imageUrl = defaultImage?.url || item.productId.images[0]?.url;
+            }
+          }
+
+          console.log("🔍 [ORDER DEBUG] Processing item:", {
+            productName: item.productName,
+            pricePerItem: item.pricePerItem,
+            totalPrice: item.totalPrice,
+            hasPrimaryImage: !!item.primaryImage,
+            primaryImageUrl: item.primaryImage?.url,
+            hasProductId: !!item.productId,
+            productIdPopulated: !!item.productId?.name
+          });
+
+          const result = {
+            productName: item.productName || item.productId?.name || 'Product not found',
+            quantity: item.quantity || 0,
+            pricePerItem: item.pricePerItem || 0,
+            totalPrice: item.totalPrice || 0,
+            color: item.color || 'N/A',
+            size: item.size || 'N/A',
+            // Pass through existing image data
+            primaryImage: item.primaryImage || null,
+            fallbackImages: item.fallbackImages || [],
+            imageMetadata: item.imageMetadata || null,
+            // Legacy field for backward compatibility
+            image: item.image || '',
             // Include product data for frontend image fallback
             product: item.productId ? {
               _id: item.productId._id,
@@ -154,6 +192,16 @@ router.get("/", authMiddleware, async (req: RequestWithUser, res: Response) => {
               colors: item.productId.colors || []
             } : null
           };
+
+          console.log("📤 [ORDER DEBUG] Sending item:", {
+            productName: result.productName,
+            pricePerItem: result.pricePerItem,
+            totalPrice: result.totalPrice,
+            hasPrimaryImage: !!result.primaryImage,
+            primaryImageUrl: result.primaryImage?.url
+          });
+
+          return result;
         }),
         // Address information
         shippingAddress: addressData ? {
@@ -170,7 +218,7 @@ router.get("/", authMiddleware, async (req: RequestWithUser, res: Response) => {
         // Raw address data for invoice generation
         address: addressData,
         // Invoice type based on order status
-        invoiceType: order.status === 'completed' ? 'tax' : 'proforma'
+        invoiceType: (order as any).status === 'completed' ? 'tax' : 'proforma'
       };
     });
 
@@ -178,6 +226,140 @@ router.get("/", authMiddleware, async (req: RequestWithUser, res: Response) => {
   } catch (error) {
     console.error("❌ Error fetching orders:", error);
     res.status(500).json({ message: "Fetching orders failed", error });
+  }
+});
+
+// Get single order by ID
+router.get("/:orderId", authMiddleware, async (req: RequestWithUser, res: Response) => {
+  try {
+    console.log("🔍 Fetching single order:", {
+      orderId: req.params.orderId,
+      userId: req.user?.userId,
+      role: req.user?.role
+    });
+
+    if (!req.user) {
+      res.status(401).json({ message: "Unauthorized: User not found" });
+      return;
+    }
+
+    // Build query - admin can access any order, user can only access their own
+    const query: any = {
+      $or: [
+        { _id: req.params.orderId },
+        { order_id: req.params.orderId }
+      ]
+    };
+
+    // If not admin, restrict to user's orders only
+    if (req.user.role !== "admin") {
+      query.user = req.user.userId;
+    }
+
+    console.log("🔍 Single order query:", query);
+
+    const order = await Order.findOne(query)
+      .populate({
+        path: 'items.productId',
+        select: 'name images colors pricePerItem',
+        model: 'Product'
+      })
+      .populate({
+        path: 'address',
+        select: 'fullName phoneNumber streetAddress city state country postalCode email'
+      })
+      .populate({
+        path: 'user',
+        select: 'name email phone'
+      })
+      .populate({
+        path: 'discountCode',
+        select: 'code discountType discountValue',
+        model: 'DiscountCode'
+      })
+      .lean();
+
+    if (!order) {
+      console.log("❌ Order not found:", req.params.orderId);
+      res.status(404).json({ message: "Order not found" });
+      return;
+    }
+
+    console.log("✅ Order found:", {
+      orderId: (order as any)._id,
+      order_id: (order as any).order_id,
+      itemsCount: (order as any).items?.length,
+      totalAmount: (order as any).totalAmount
+    });
+
+    // Transform the single order response (similar to the list transform)
+    const orderData = order as any; // Type assertion to fix TypeScript issues
+    const addressData = orderData.address;
+    const billingAddressData = orderData.billingAddress || null;
+
+    const transformedOrder = {
+      _id: orderData._id,
+      name: orderData.name,
+      order_id: orderData.order_id,
+      subtotal: orderData.subtotal,
+      amount: orderData.amount,
+      totalAmount: orderData.totalAmount,
+      discountAmount: orderData.discountAmount || 0,
+      status: orderData.status,
+      createdAt: orderData.createdAt,
+      updatedAt: orderData.updatedAt,
+      razorpay_payment_id: orderData.razorpay_payment_id || null,
+      items: orderData.items.map((item: any) => {
+        console.log("🔍 Processing item for single order:", {
+          productName: item.productName,
+          pricePerItem: item.pricePerItem,
+          totalPrice: item.totalPrice,
+          hasPrimaryImage: !!item.primaryImage,
+          primaryImageUrl: item.primaryImage?.url
+        });
+
+        return {
+          _id: item._id,
+          productId: item.productId?._id || item.productId,
+          productName: item.productName || item.productId?.name || 'Product not found',
+          quantity: item.quantity || 0,
+          price: item.price || item.pricePerItem || 0, // Backward compatibility
+          pricePerItem: item.pricePerItem || 0,
+          totalPrice: item.totalPrice || (item.pricePerItem * item.quantity) || 0,
+          color: item.color || 'N/A',
+          size: item.size || 'N/A',
+          primaryImage: item.primaryImage || null,
+          fallbackImages: item.fallbackImages || [],
+          imageMetadata: item.imageMetadata || null,
+          image: item.image || item.primaryImage?.url || '',
+          product: item.productId ? {
+            _id: item.productId._id,
+            name: item.productId.name,
+            images: item.productId.images || [],
+            colors: item.productId.colors || []
+          } : null
+        };
+      }),
+      // Address information - match the database structure
+      address: addressData,
+      shippingAddress: orderData.shippingAddress || null,
+      billingAddress: billingAddressData,
+      user: orderData.user
+    };
+
+    console.log("📤 Sending transformed order:", {
+      orderId: transformedOrder.order_id,
+      itemsCount: transformedOrder.items.length,
+      hasAddress: !!transformedOrder.address,
+      hasShippingAddress: !!transformedOrder.shippingAddress,
+      firstItemPrice: transformedOrder.items[0]?.pricePerItem,
+      firstItemTotal: transformedOrder.items[0]?.totalPrice
+    });
+
+    res.status(200).json(transformedOrder);
+  } catch (error) {
+    console.error("❌ Error fetching single order:", error);
+    res.status(500).json({ message: "Failed to fetch order details", error });
   }
 });
 
@@ -205,7 +387,7 @@ router.post("/", authMiddleware, async (req: RequestWithUser, res) => {
         if (!product) {
           throw new Error(`Product ${item.product} not found`)
         }
-        
+
         const price = product.pricePerItem * item.quantity
         subtotal += price
 

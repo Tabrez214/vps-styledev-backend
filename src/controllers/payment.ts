@@ -26,27 +26,33 @@ interface OrderItem {
 
 dotenv.config();
 
+// SECURITY: Use environment variables for credentials
+if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+  console.error('❌ CRITICAL: Razorpay credentials not found in environment variables');
+  throw new Error('Razorpay credentials not configured');
+}
+
 const razorpay = new Razorpay({
-  key_id: "rzp_test_Ng4tai9paMhYzq",
-  key_secret: "MOaSHDGOpFb6fJvJN0RdXJQi"
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET
 });
 
 export const checkout = async (req: Request, res: Response) => {
   try {
-    const { 
-      orderId, 
-      amount, 
+    const {
+      orderId,
+      amount,
       subtotal,
       discountAmount: providedDiscountAmount,
       couponInfo,
-      address, 
-      items, 
-      userId, 
-      discountCode, 
+      address,
+      items,
+      userId,
+      discountCode,
       designOrder,
       purchaseOrderNumber,
       shippingAddress,
-      billingAddress 
+      billingAddress
     } = req.body;
 
     let order;
@@ -109,6 +115,12 @@ export const checkout = async (req: Request, res: Response) => {
 
           orderItems.push({
             productId: item.productId,
+            productName: item.productName || product.name || "Custom T-Shirt", // Add required field
+            primaryImage: { // Add required nested object
+              url: item.primaryImage?.url || item.imageUrl || product.images?.[0] || "https://api.styledev.in/uploads/default.jpg",
+              alt: item.primaryImage?.alt || "",
+              imageId: item.primaryImage?.imageId || ""
+            },
             quantity: item.quantity,
             pricePerItem: pricePerItem,    // Standardized field name
             totalPrice: totalPrice,        // Add for consistency
@@ -126,13 +138,13 @@ export const checkout = async (req: Request, res: Response) => {
       // Use coupon info from frontend if provided (already validated on address page)
       if (couponInfo && couponInfo.coupon) {
         discountAmount = providedDiscountAmount || couponInfo.discountAmount || 0;
-        
+
         // Find the discount code for reference
         const discount = await DiscountCode.findOne({
           code: couponInfo.coupon.code.toUpperCase(),
           isActive: true
         });
-        
+
         if (discount) {
           discountCodeId = discount._id;
           // Re-validate discount is still valid
@@ -150,9 +162,9 @@ export const checkout = async (req: Request, res: Response) => {
             );
           }
         }
-        
+
         totalAmount = subtotal - discountAmount;
-      } 
+      }
       // Fallback to old discount code processing if no coupon info
       else if (discountCode) {
         // Find and validate discount code
@@ -200,7 +212,8 @@ export const checkout = async (req: Request, res: Response) => {
       }
 
       // Standardize address using address mapping utilities
-      const standardizedAddress = mapAddressFields.frontendToBackend(shippingAddress || address);
+      const standardizedAddress = mapAddressFields.frontendToBackend(address);
+      const standardizedShippingAddress = shippingAddress ? mapAddressFields.frontendToBackend(shippingAddress) : null;
       const standardizedBillingAddress = billingAddress ? mapAddressFields.frontendToBackend(billingAddress) : null;
 
       // Create a new order with all required fields
@@ -209,7 +222,7 @@ export const checkout = async (req: Request, res: Response) => {
         order_id: `order_${Date.now()}`, // Add required order_id field
         user: userId,
         items: orderItems,
-        address: standardizedAddress, // Use standardized address
+        address: standardizedAddress, // Use standardized address (keeping for backward compatibility)
         subtotal: subtotal,
         amount: totalAmount, // Set amount to the final total (with discount if applicable)
         discountCode: discountCodeId,
@@ -220,6 +233,8 @@ export const checkout = async (req: Request, res: Response) => {
         paymentSource: 'cart' as const,
         // Add purchase order number if provided
         ...(purchaseOrderNumber && { purchaseOrderNumber: purchaseOrderNumber.trim() }),
+        // Add standardized shipping address
+        ...(standardizedShippingAddress && { shippingAddress: standardizedShippingAddress }),
         // Add standardized billing address if different from shipping
         ...(standardizedBillingAddress && { billingAddress: standardizedBillingAddress })
       };
@@ -291,7 +306,7 @@ export const checkout = async (req: Request, res: Response) => {
         });
 
         await designOrderRecord.save();
-        
+
         // Enhanced linking: Add design order reference to main order
         order.linkedDesignOrders = order.linkedDesignOrders || [];
         order.linkedDesignOrders.push(designOrderRecord._id);
@@ -373,7 +388,7 @@ export const expressCheckout = async (req: Request, res: Response) => {
     });
 
     const {
-      amount,
+      amount: amountFromFrontend, // This now comes in paise (like normal checkout)
       items,
       guestInfo, // { email, phone, name } - for guest checkout
       userId, // Optional - if user is logged in
@@ -382,6 +397,15 @@ export const expressCheckout = async (req: Request, res: Response) => {
       address, // Add address from request body
       billingAddress // Add billing address from request body
     } = req.body;
+
+    // Convert amount from paise back to rupees for internal calculations (same as normal checkout)
+    const amount = amountFromFrontend / 100;
+
+    console.log('💰 Express checkout amount conversion:', {
+      amountFromFrontend: amountFromFrontend,
+      amountInRupees: amount,
+      conversion: 'paise to rupees'
+    });
 
     let finalUserId = userId;
     let isGuestOrder = false;
@@ -452,6 +476,12 @@ export const expressCheckout = async (req: Request, res: Response) => {
         if (item.isDesignOrder) {
           orderItems.push({
             designId: item.designId,
+            productName: item.productName || "Custom Design", // Add required field
+            primaryImage: { // Add required nested object
+              url: item.primaryImage?.url || item.imageUrl || "https://api.styledev.in/uploads/design-default.jpg",
+              alt: item.primaryImage?.alt || "Design Image",
+              imageId: item.primaryImage?.imageId || ""
+            },
             quantity: standardizedItem.quantity,
             pricePerItem: standardizedItem.pricePerItem,
             totalPrice: standardizedItem.totalPrice,
@@ -466,16 +496,22 @@ export const expressCheckout = async (req: Request, res: Response) => {
             try {
               const product = await Product.findById(item.productId);
               if (product) {
-                // Use product pricing with standardized fields
-                const standardizedProductItem = mapPriceFields.standardizeOrderItem({
+                // Use product pricing with standardized fields and required schema fields
+                const standardizedProductItem = {
                   productId: item.productId,
+                  productName: item.productName || product.name || "Custom Product", // Add required field
+                  primaryImage: { // Add required nested object
+                    url: item.primaryImage?.url || item.imageUrl || product.images?.[0] || "https://api.styledev.in/uploads/default.jpg",
+                    alt: item.primaryImage?.alt || "",
+                    imageId: item.primaryImage?.imageId || ""
+                  },
                   quantity: standardizedItem.quantity,
                   pricePerItem: product.pricePerItem,
                   totalPrice: product.pricePerItem * standardizedItem.quantity,
                   color: item.color || 'Default',
                   size: item.size || 'M'
-                });
-                
+                };
+
                 orderItems.push(standardizedProductItem);
               }
             } catch (error) {
@@ -503,15 +539,21 @@ export const expressCheckout = async (req: Request, res: Response) => {
           });
         }
 
-        // Use standardized item mapping for consistency
-        const standardizedItem = mapPriceFields.standardizeOrderItem({
+        // Use standardized item mapping for consistency with required fields
+        const standardizedItem = {
           productId: item.productId,
+          productName: item.productName || product.name || "Custom Product", // Add required field
+          primaryImage: { // Add required nested object
+            url: item.primaryImage?.url || item.imageUrl || product.images?.[0] || "https://api.styledev.in/uploads/default.jpg",
+            alt: item.primaryImage?.alt || "",
+            imageId: item.primaryImage?.imageId || ""
+          },
           quantity: item.quantity,
           pricePerItem: product.pricePerItem,
           totalPrice: product.pricePerItem * item.quantity,
           color: item.color || 'Default',
           size: item.size || 'M'
-        });
+        };
 
         subtotal += standardizedItem.totalPrice;
         orderItems.push(standardizedItem);
@@ -564,23 +606,23 @@ export const expressCheckout = async (req: Request, res: Response) => {
       email: frontendAddress.email || guestInfo?.email || 'express@checkout.com',
       phone: frontendAddress.phone || frontendAddress.phoneNumber || guestInfo?.phone || '',
       name: frontendAddress.name || frontendAddress.fullName || guestInfo?.name || 'Express Checkout User',
-      
+
       // Support multiple street address field names
-      street: frontendAddress.street || 
-              frontendAddress.streetAddress || 
-              frontendAddress.address || 
-              frontendAddress.billingAddress || 
-              'To be updated from payment gateway',
-              
+      street: frontendAddress.street ||
+        frontendAddress.streetAddress ||
+        frontendAddress.address ||
+        frontendAddress.billingAddress ||
+        'To be updated from payment gateway',
+
       city: frontendAddress.city || frontendAddress.billingCity || 'To be updated',
       state: frontendAddress.state || frontendAddress.billingState || 'To be updated',
-      
+
       // Support multiple postal code field names  
-      zipCode: frontendAddress.zipCode || 
-               frontendAddress.postalCode || 
-               frontendAddress.billingPostalCode || 
-               'To be updated',
-               
+      zipCode: frontendAddress.zipCode ||
+        frontendAddress.postalCode ||
+        frontendAddress.billingPostalCode ||
+        'To be updated',
+
       country: frontendAddress.country || frontendAddress.billingCountry || 'India',
       gstNumber: frontendAddress.gstNumber || guestInfo?.gstNumber || ''
     }) : mapAddressFields.frontendToBackend({
@@ -599,7 +641,7 @@ export const expressCheckout = async (req: Request, res: Response) => {
     const orderIdString = `EXPRESS-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     // Create order in database
-    const orderData = {
+    const orderData: any = {
       name: `Express Order - ${guestInfo?.name || guestUser?.name || 'Guest'}`,
       order_id: orderIdString,
       user: finalUserId,
@@ -632,10 +674,22 @@ export const expressCheckout = async (req: Request, res: Response) => {
       ...(designOrder && { designOrderData: designOrder })
     };
 
+    // Only add shipping and billing addresses if they contain valid data
+    // This prevents validation errors for empty required fields in express checkout
+    const { shippingAddress: reqShippingAddress, billingAddress: reqBillingAddress } = req.body;
+
+    if (reqShippingAddress && reqShippingAddress.name && reqShippingAddress.street) {
+      orderData.shippingAddress = mapAddressFields.frontendToBackend(reqShippingAddress);
+    }
+
+    if (reqBillingAddress && reqBillingAddress.name && reqBillingAddress.street) {
+      orderData.billingAddress = mapAddressFields.frontendToBackend(reqBillingAddress);
+    }
+
     const order = new Order(orderData);
     await order.save();
 
-    // Create Razorpay order
+    // Create Razorpay order - use the original amount from frontend (already in paise)
     const amountInPaise = Math.round(totalAmount * 100);
     const razorpayOrder = await razorpay.orders.create({
       amount: amountInPaise,
@@ -718,7 +772,7 @@ export const expressCheckout = async (req: Request, res: Response) => {
 
         try {
           await designOrderRecord.save();
-          
+
           // Enhanced linking: Add design order reference to main order
           order.linkedDesignOrders = order.linkedDesignOrders || [];
           order.linkedDesignOrders.push(designOrderRecord._id);

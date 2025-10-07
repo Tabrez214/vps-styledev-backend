@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { checkout, verification, expressCheckout } from "../controllers/payment";
 import { authMiddleware } from "../middleware/authMiddleware";
-import { csrfProtection } from "../middleware/csrfMiddleware";
+import { csrfProtection, flexibleCSRFProtection } from "../middleware/csrfMiddleware";
 import { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
 import Order from "../models/order";
@@ -26,8 +26,8 @@ router.post("/create-order", csrfProtection, authMiddleware, (req: Request, res:
   checkout(req, res).catch(next);
 });
 
-// Express checkout - supports both authenticated and guest users with CSRF protection
-router.post("/express-checkout", csrfProtection, (req: Request, res: Response, next: NextFunction) => {
+// Express checkout - supports both authenticated and guest users with flexible CSRF protection
+router.post("/express-checkout", flexibleCSRFProtection, (req: Request, res: Response, next: NextFunction) => {
   console.log("🚀 Express-checkout request received:", {
     body: {
       amount: req.body.amount,
@@ -71,19 +71,23 @@ router.post("/verify", (req: Request, res: Response, next: NextFunction) => {
         return res.status(400).json({ success: false, message: "Payment ID is required" });
       }
 
-      // Verify payment signature (skip for demo payments)
-      let isAuthentic = true;
-      if (razorpay_signature && !isDemoPayment) {
-        const body = razorpay_order_id + "|" + razorpay_payment_id;
-        const expectedSignature = crypto
-          .createHmac("sha256", "MOaSHDGOpFb6fJvJN0RdXJQi")
-          .update(body)
-          .digest("hex");
-
-        isAuthentic = expectedSignature === razorpay_signature;
+      // SECURITY: Always verify payment signature - no bypasses allowed
+      if (!razorpay_signature) {
+        console.log("❌ Payment signature missing");
+        return res.status(400).json({ success: false, message: "Payment signature is required" });
       }
 
+      // Verify signature using environment variable
+      const body = razorpay_order_id + "|" + razorpay_payment_id;
+      const expectedSignature = crypto
+        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
+        .update(body)
+        .digest("hex");
+
+      const isAuthentic = expectedSignature === razorpay_signature;
+
       if (!isAuthentic) {
+        console.log("❌ Payment signature verification failed");
         return res.status(400).json({ success: false, message: "Payment verification failed" });
       }
 

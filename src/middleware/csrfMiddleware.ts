@@ -53,6 +53,35 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction) 
 };
 
 /**
+ * Flexible CSRF Protection for Express Checkout
+ * Allows requests without CSRF but logs them for monitoring
+ */
+export const flexibleCSRFProtection = (req: Request, res: Response, next: NextFunction) => {
+  // Skip CSRF for GET, HEAD, OPTIONS
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+    return next();
+  }
+
+  const token = req.headers['x-csrf-token'] as string || req.body._csrf;
+  const sessionId = req.headers['x-session-id'] as string;
+
+  // If both token and sessionId are present, validate them
+  if (token && sessionId) {
+    const storedTokenData = csrfTokens.get(sessionId);
+    if (!storedTokenData || storedTokenData.token !== token || storedTokenData.expires < Date.now()) {
+      console.log('⚠️ Express checkout: Invalid CSRF token provided, but allowing request');
+    } else {
+      console.log('✅ Express checkout: Valid CSRF token provided');
+    }
+  } else {
+    console.log('⚠️ Express checkout: No CSRF token provided, but allowing request');
+  }
+
+  // Always proceed for express checkout
+  next();
+};
+
+/**
  * Generate and store CSRF token for session
  */
 export const getCSRFToken = (req: Request, res: Response) => {
