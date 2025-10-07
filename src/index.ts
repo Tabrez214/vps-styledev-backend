@@ -315,7 +315,15 @@ app.get('/', (req, res) => {
 
 // Use the auth router for '/auth' routes
 app.use('/auth', authRouter);
-app.use('/', serverTimeRoutes);
+app.use('/auth', serverTimeRoutes);
+
+// Enhanced debugging middleware for /auth routes
+app.use('/auth', (req, res, next) => {
+  console.log(`🔍 AUTH REQUEST: ${req.method} ${req.originalUrl}`);
+  console.log(`🔍 Path: ${req.path}`);
+  console.log(`🔍 Headers:`, Object.keys(req.headers));
+  next();
+});
 
 // Debug: List all registered routes
 console.log('🔍 Registered routes:');

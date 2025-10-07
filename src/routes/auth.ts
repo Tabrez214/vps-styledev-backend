@@ -14,7 +14,6 @@ import { sendPasswordResetEmail } from '../lib/emailService';
 import EmailCampaignService from '../services/emailCampaignService';
 import { GuestService } from '../services/guestService';
 import { SessionService } from '../services/sessionService';
-import crypto from 'crypto';
 
 const router = Router();
 
@@ -802,13 +801,19 @@ router.post('/guest-orders', async (req: Request, res: Response) => {
  * Get CSRF token for frontend
  */
 router.get('/csrf-token', (req, res, next) => {
+  console.log('🎯 CSRF TOKEN ROUTE HIT!');
   console.log('🔍 CSRF token request received:', {
     method: req.method,
     url: req.url,
+    originalUrl: req.originalUrl,
+    path: req.path,
     origin: req.headers.origin,
     headers: Object.keys(req.headers)
   });
   getCSRFToken(req, res);
 });
+
+// Debug: Log that this router is being exported
+console.log('✅ Auth router exported with CSRF token route at /csrf-token');
 
 export default router;

@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import { getCSRFToken } from '../middleware/csrfMiddleware';
 
 const router = Router();
 
