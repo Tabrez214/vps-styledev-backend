@@ -188,7 +188,7 @@ const orderSchema = new mongoose.Schema(
       },
       size: {                            // Use standard size enum
         type: String,
-        enum: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '2XL', '3XL'],
+        enum: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '2XL', '3XL', 'Mixed'],
         required: true,
         trim: true
       },
