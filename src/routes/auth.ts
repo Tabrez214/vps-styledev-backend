@@ -645,7 +645,7 @@ router.post('/claim-account', async (req: Request, res: Response) => {
     const passwordValidation = validatePassword(password);
     if (!passwordValidation.isValid) {
       res.status(400).json({
-        error: "Weak password", 
+        error: "Weak password",
         message: "Password does not meet security requirements",
         details: passwordValidation.errors
       });
