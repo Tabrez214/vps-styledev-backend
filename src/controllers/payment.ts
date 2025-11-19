@@ -808,7 +808,7 @@ export const expressCheckout = async (req: Request, res: Response) => {
         orderId: razorpayOrder.id,
         amount: amountInPaise,
         currency: "INR",
-        key: "rzp_test_Ng4tai9paMhYzq"
+        key: process.env.RAZORPAY_KEY_ID
       },
       // Include user account message if applicable
       ...(userAccountMessage && {
