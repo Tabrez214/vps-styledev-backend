@@ -336,7 +336,8 @@ export const checkout = async (req: Request, res: Response) => {
     await order.save();
 
     // Return the necessary payment details to the frontend
-    const razorpayKey = "rzp_test_Ng4tai9paMhYzq";
+    // Return the necessary payment details to the frontend
+    const razorpayKey = process.env.RAZORPAY_KEY_ID;
 
     console.log("Payment session created successfully:", {
       orderId: order.order_id,
