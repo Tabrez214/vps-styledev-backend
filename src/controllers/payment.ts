@@ -675,16 +675,19 @@ export const expressCheckout = async (req: Request, res: Response) => {
       ...(designOrder && { designOrderData: designOrder })
     };
 
-    // Only add shipping and billing addresses if they contain valid data
-    // This prevents validation errors for empty required fields in express checkout
+    // Set shipping and billing addresses properly for express checkout
+    // Use the main address as billing address, and same for shipping unless specified
     const { shippingAddress: reqShippingAddress, billingAddress: reqBillingAddress } = req.body;
 
+    // Always set billing address from the main address data
+    orderData.billingAddress = tempAddress;
+
+    // Set shipping address - use provided shipping address or default to billing
     if (reqShippingAddress && reqShippingAddress.name && reqShippingAddress.street) {
       orderData.shippingAddress = mapAddressFields.frontendToBackend(reqShippingAddress);
-    }
-
-    if (reqBillingAddress && reqBillingAddress.name && reqBillingAddress.street) {
-      orderData.billingAddress = mapAddressFields.frontendToBackend(reqBillingAddress);
+    } else {
+      // Default shipping to billing address
+      orderData.shippingAddress = tempAddress;
     }
 
     const order = new Order(orderData);
@@ -951,7 +954,7 @@ export const verification = async (req: Request, res: Response) => {
     // Update billing address if provided (for express checkout)
     const addressToUpdate = billingAddress || shippingAddress || customerInfo;
     if (addressToUpdate && (order.isExpressCheckout || order.isGuestOrder)) {
-      order.billingAddress = {
+      const updatedBillingAddress = {
         name: addressToUpdate.name || addressToUpdate.fullName || order.billingAddress?.name || (order.user as any)?.name,
         email: addressToUpdate.email || customerContact?.email || order.billingAddress?.email || (order.user as any)?.email,
         phone: addressToUpdate.phone || addressToUpdate.phoneNumber || customerContact?.contact || order.billingAddress?.phone || (order.user as any)?.phone,
@@ -963,42 +966,39 @@ export const verification = async (req: Request, res: Response) => {
         gstNumber: addressToUpdate.gstNumber || order.billingAddress?.gstNumber
       };
 
+      order.billingAddress = updatedBillingAddress;
+
+      // Also update shipping address if not already set properly
+      if (!order.shippingAddress || !order.shippingAddress.street || order.shippingAddress.street === 'Not provided') {
+        order.shippingAddress = updatedBillingAddress;
+      }
+
       // Also update the main address if it was temporary
       if (typeof order.address === 'object' && (
         order.address.street === 'To be updated from payment gateway' ||
         order.address.city === 'To be updated' ||
         order.address.state === 'To be updated'
       )) {
-        order.address = {
-          ...order.address,
-          name: order.billingAddress.name,
-          email: order.billingAddress.email,
-          phone: order.billingAddress.phone,
-          street: order.billingAddress.street,
-          city: order.billingAddress.city,
-          state: order.billingAddress.state,
-          zipCode: order.billingAddress.zipCode,
-          country: order.billingAddress.country
-        };
+        order.address = updatedBillingAddress;
       }
 
       // Update guest user billing info if it's a guest order
       if (order.isGuestOrder && order.user) {
         await GuestService.updateGuestBillingInfo(order.user.toString(), {
-          name: order.billingAddress.name,
-          email: order.billingAddress.email,
-          phone: order.billingAddress.phone,
-          street: order.billingAddress.street,
-          city: order.billingAddress.city,
-          state: order.billingAddress.state,
-          zipCode: order.billingAddress.zipCode,
-          country: order.billingAddress.country
+          name: updatedBillingAddress.name,
+          email: updatedBillingAddress.email,
+          phone: updatedBillingAddress.phone,
+          street: updatedBillingAddress.street,
+          city: updatedBillingAddress.city,
+          state: updatedBillingAddress.state,
+          zipCode: updatedBillingAddress.zipCode,
+          country: updatedBillingAddress.country
         });
       }
     } else {
       // For demo payments without billing address, create a default one
       if (isDemoPayment && !order.billingAddress) {
-        order.billingAddress = {
+        const defaultAddress = {
           name: (order.user as any)?.name || 'Demo Customer',
           email: (order.user as any)?.email || 'demo@example.com',
           phone: (order.user as any)?.phone || '9876543210',
@@ -1009,6 +1009,8 @@ export const verification = async (req: Request, res: Response) => {
           country: 'India',
           gstNumber: ''
         };
+        order.billingAddress = defaultAddress;
+        order.shippingAddress = defaultAddress;
       }
     }
 
