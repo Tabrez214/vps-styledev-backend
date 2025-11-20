@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon --ext ts --exec ts-node src/index.ts",
-    "build": "tsc",
+    "build": "tsc && npm run copy-templates",
+    "copy-templates": "mkdir -p dist/src/templates/emails && cp -r src/templates/emails/*.html dist/src/templates/emails/",
     "start": "node dist/src/index.js",
     "migration:week1": "ts-node src/scripts/week1-migration.ts",
     "migration:week1:dry-run": "ts-node src/scripts/week1-migration.ts --dry-run",

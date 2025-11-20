@@ -627,7 +627,12 @@ class EmailService {
   async sendOrderConfirmationEmail(order: Order) {
     try {
       // Read the order confirmation template
-      const templatePath = path.join(__dirname, '../templates/emails/order-confirmation.html');
+      // Use path resolution that works in both dev and production
+      const templatePath = process.env.NODE_ENV === 'production'
+        ? path.join(process.cwd(), 'src/templates/emails/order-confirmation.html')
+        : path.join(__dirname, '../templates/emails/order-confirmation.html');
+      
+      console.log('📧 Reading email template from:', templatePath);
       let html = await fs.readFile(templatePath, 'utf-8');
 
       // Extract order details
