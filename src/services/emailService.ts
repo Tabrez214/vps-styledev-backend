@@ -623,6 +623,88 @@ class EmailService {
     }
   }
 
+  // Send order confirmation email with custom template
+  async sendOrderConfirmationEmail(order: Order) {
+    try {
+      // Read the order confirmation template
+      const templatePath = path.join(__dirname, '../templates/emails/order-confirmation.html');
+      let html = await fs.readFile(templatePath, 'utf-8');
+
+      // Extract order details
+      const orderNumber = order.orderId || order.orderNumber || order._id || '-';
+      const date = order.orderDate
+        ? new Date(order.orderDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })
+        : order.createdAt
+          ? new Date(order.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })
+          : new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
+      
+      const shipping = order.shippingAddress || {};
+      const customer = order.customer || {};
+      const customerName = customer.name || shipping.fullName || shipping.name || 'Valued Customer';
+      const customerEmail = customer.email || order.email || shipping.email;
+      
+      if (!customerEmail) {
+        console.error(`No recipient email found for order ${orderNumber}`);
+        throw new Error('No recipient email found');
+      }
+
+      const items = order.items || [];
+      const subtotal = order.subtotal || order.amount || 0;
+      const discount = order.discountAmount || order.discount || 0;
+      const total = order.totalAmount || order.total || subtotal - discount;
+
+      // Generate items HTML
+      const itemsHTML = items.map((item) => {
+        const productName = item.productName || item.name || item.description || 'Product';
+        const quantity = item.quantity || 0;
+        const price = item.pricePerItem || item.unitPrice || item.price || 0;
+        const itemTotal = item.totalPrice || item.total || (price * quantity);
+        const imageUrl = item.image || item.imageUrl || 'https://api.styledev.in/uploads/default.jpg';
+        const size = item.size || 'N/A';
+        const color = item.color || 'N/A';
+
+        return `
+                                <tr>
+                                    <td width="80">
+                                        <img src="${imageUrl}" alt="${productName}" class="item-img">
+                                    </td>
+                                    <td width="30" style="font-size: 0; line-height: 0;">&nbsp;</td>
+                                    <td class="item-details">
+                                        <span class="item-name">${productName}</span>
+                                        <span class="item-meta">Size: ${size} | Color: ${color}</span>
+                                        <span class="item-meta">Qty: ${quantity}</span>
+                                    </td>
+                                    <td class="item-price">₹${Number(itemTotal).toFixed(2)}</td>
+                                </tr>`;
+      }).join('');
+
+      // Replace placeholders in template
+      html = html.replace(/order_RhwdgqToM1reSo/g, orderNumber);
+      html = html.replace(/Nov 20, 2025/g, date);
+      html = html.replace(/checking checking/g, customerName);
+      html = html.replace(/₹1\.10/g, `₹${Number(total).toFixed(2)}`);
+      html = html.replace(/-₹0\.00/g, `-₹${Number(discount).toFixed(2)}`);
+      
+      // Replace the items section
+      const itemsPlaceholder = html.match(/<tr>\s*<td width="80">[\s\S]*?<\/tr>/);
+      if (itemsPlaceholder) {
+        html = html.replace(itemsPlaceholder[0], itemsHTML);
+      }
+
+      // Replace subtotal in totals table
+      html = html.replace(/<td>Subtotal<\/td>\s*<td class="text-right">₹[\d.]+<\/td>/, 
+        `<td>Subtotal</td>\n                                    <td class="text-right">₹${Number(subtotal).toFixed(2)}</td>`);
+
+      const subject = `Order Confirmation - ${orderNumber}`;
+      await this.sendEmail(customerEmail, subject, html);
+      
+      console.log(`✅ Order confirmation email sent to ${customerEmail} for order ${orderNumber}`);
+    } catch (error) {
+      console.error('Error sending order confirmation email:', error);
+      throw error;
+    }
+  }
+
   // Send order status email
   async sendOrderStatusEmail(order: Order, status: string) {
     const template = this.getEmailTemplate(status);

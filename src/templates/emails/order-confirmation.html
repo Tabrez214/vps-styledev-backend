@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Confirmation</title>
+    <style>
+        /* RESET STYLES */
+        body { margin: 0; padding: 0; min-width: 100%; width: 100% !important; height: 100% !important; }
+        body, table, td, div, p, a { -webkit-font-smoothing: antialiased; text-size-adjust: 100%; -ms-text-size-adjust: 100%; -webkit-text-size-adjust: 100%; line-height: 100%; }
+        table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; border-collapse: collapse !important; border-spacing: 0; }
+        img { border: 0; line-height: 100%; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }
+        #outlook a { padding: 0; }
+        
+        /* CUSTOM STYLES - THEME: SKY BLUE */
+        /* Sky 50 Background for the whole email */
+        body { background-color: #f0f9ff; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #334155; }
+        
+        .container { width: 100%; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        
+        /* HEADER - Sky 600 */
+        .header { background-color: #0284c7; padding: 40px 20px; text-align: center; }
+        .header h1 { color: #ffffff; margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 1px; }
+        
+        .content { padding: 40px 30px; }
+        
+        .order-info { border-bottom: 2px solid #e0f2fe; padding-bottom: 20px; margin-bottom: 25px; }
+        /* Updated order-id: Bigger, Bold, and Dark Blue */
+        .order-id { font-size: 24px; font-weight: 800; color: #0c4a6e; margin-bottom: 8px; margin-top: 0; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        /* Greeting - Dark Blue */
+        .greeting { font-size: 20px; font-weight: 700; margin-bottom: 15px; color: #0c4a6e; }
+        .intro-text { font-size: 16px; line-height: 1.6; color: #475569; margin-bottom: 25px; }
+        
+        /* ITEM TABLE */
+        .item-table { width: 100%; margin-bottom: 25px; }
+        .item-table td { padding: 20px 0; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+        .item-img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0; }
+        /* Removed padding-left since we are using a spacer cell now */
+        .item-details { }
+        .item-name { font-size: 16px; font-weight: 700; color: #0c4a6e; margin: 0 0 5px 0; display: block; }
+        .item-meta { font-size: 14px; color: #64748b; margin: 0; display: block; line-height: 1.5; }
+        .item-price { text-align: right; font-weight: 700; white-space: nowrap; font-size: 16px; color: #0284c7; }
+
+        /* TOTALS */
+        .totals-table { width: 100%; max-width: 250px; margin-left: auto; margin-top: 15px; }
+        .totals-table td { padding: 8px 0; font-size: 15px; color: #475569; }
+        .totals-table .total-row td { border-top: 2px solid #0284c7; padding-top: 15px; font-weight: 800; color: #0c4a6e; font-size: 18px; }
+        
+        /* ADDRESSES */
+        .address-section { background-color: #f0f9ff; border-radius: 12px; padding: 25px; margin-top: 35px; border: 1px solid #bae6fd; }
+        .address-title { font-size: 12px; font-weight: 800; text-transform: uppercase; color: #0284c7; margin-bottom: 12px; display: block; letter-spacing: 0.5px; }
+        .address-text { font-size: 14px; line-height: 1.6; color: #334155; margin: 0; }
+
+        /* FOOTER - Sky 900 */
+        .footer { background-color: #0c4a6e; padding: 40px 20px; text-align: center; font-size: 13px; color: #bae6fd; }
+        .footer a { color: #ffffff; text-decoration: underline; }
+
+        /* BUTTON - White BG with Blue Text (Matches your "Get Started" button) */
+        .button { 
+            display: inline-block; 
+            background-color: #ffffff; 
+            color: #0284c7; 
+            padding: 14px 32px; 
+            text-decoration: none; 
+            border-radius: 50px; /* Pill shape like hero */
+            font-weight: 700; 
+            margin-top: 25px; 
+            font-size: 15px;
+            border: 2px solid #0284c7;
+            box-shadow: 0 2px 4px rgba(2, 132, 199, 0.15);
+        }
+    </style>
+</head>
+<body>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" bgcolor="#f0f9ff">
+        <tr>
+            <td align="center" style="padding: 40px 0;">
+                
+                <!-- Main Container -->
+                <table role="presentation" class="container" width="600" cellspacing="0" cellpadding="0" border="0">
+                    
+                    <!-- Header: Sky 600 Blue -->
+                    <tr>
+                        <td class="header">
+                            <!-- Dynamic: Brand Name or Logo -->
+                            <h1>STYLEDEV</h1>
+                        </td>
+                    </tr>
+
+                    <!-- Body Content -->
+                    <tr>
+                        <td class="content">
+                            
+                            <div class="order-info">
+                                <!-- Dynamic: razorpay_order_id -->
+                                <p class="order-id">Order #order_RhwdgqToM1reSo</p>
+                                <!-- Dynamic: Date -->
+                                <p style="margin: 0; font-size: 14px; color: #64748b;">Nov 20, 2025</p>
+                            </div>
+
+                            <!-- Dynamic: customerName -->
+                            <h2 class="greeting">Hi checking checking,</h2>
+                            <p class="intro-text">
+                                Thank you for your order! We've received your payment and are getting your order ready to be shipped.
+                            </p>
+
+                            <!-- Items Table -->
+                            <table role="presentation" class="item-table" cellspacing="0" cellpadding="0" border="0">
+                                <!-- Loop through items here -->
+                                <tr>
+                                    <td width="80">
+                                        <!-- Dynamic: imageUrl -->
+                                        <img src="https://api.styledev.in/uploads/file-1756065128272-988084727.webp" alt="Product" class="item-img">
+                                    </td>
+                                    <!-- Explicit Spacer Cell for robust gap -->
+                                    <td width="30" style="font-size: 0; line-height: 0;">&nbsp;</td>
+                                    <td class="item-details">
+                                        <!-- Dynamic: productName -->
+                                        <span class="item-name">Custom Zipper Hoodies</span>
+                                        <!-- Dynamic: size, color -->
+                                        <span class="item-meta">Size: 2XL | Color: Navy Blue</span>
+                                        <span class="item-meta">Qty: 1</span>
+                                    </td>
+                                    <!-- Dynamic: pricePerItem -->
+                                    <td class="item-price">₹1.10</td>
+                                </tr>
+                                <!-- End Loop -->
+                            </table>
+
+                            <!-- Totals -->
+                            <table role="presentation" class="totals-table" cellspacing="0" cellpadding="0" border="0">
+                                <tr>
+                                    <td>Subtotal</td>
+                                    <!-- Dynamic: amount -->
+                                    <td class="text-right">₹1.10</td>
+                                </tr>
+                                <tr>
+                                    <td>Shipping</td>
+                                    <td class="text-right">Free</td>
+                                </tr>
+                                <tr>
+                                    <td>Discount</td>
+                                    <!-- Dynamic: discountAmount -->
+                                    <td class="text-right">-₹0.00</td>
+                                </tr>
+                                <tr class="total-row">
+                                    <td>Total</td>
+                                    <!-- Dynamic: totalPrice -->
+                                    <td class="text-right">₹1.10</td>
+                                </tr>
+                            </table>
+
+                            <div style="text-align: center; margin-top: 10px; margin-bottom: 10px;">
+                                <a href="https://styledev.in/account/orders" class="button">View Your Order</a>
+                            </div>
+
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td class="footer">
+                            <!-- Added Link to contact page -->
+                            <p style="margin-bottom: 10px;">Questions? Reply to this email or <a href="https://styledev.in/contact" style="color: #ffffff; text-decoration: underline;">contact our support</a>.</p>
+                            <p>&copy; 2025 StyleDev. All rights reserved.</p>
+                            <p>
+                                <!-- Dynamic: Company Address if needed -->
+                                Mumbai, Maharashtra, India
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+                
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>

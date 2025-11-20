@@ -1037,6 +1037,46 @@ export const verification = async (req: Request, res: Response) => {
       paymentType: isDemoPayment ? 'demo' : 'real'
     });
 
+    // Send order confirmation email
+    try {
+      const EmailService = (await import('../services/emailService')).default;
+      const emailService = new EmailService();
+      
+      // Prepare order data for email
+      const emailOrderData = {
+        orderId: order.order_id,
+        orderNumber: order.order_id,
+        orderDate: order.createdAt,
+        customer: {
+          name: order.billingAddress?.name || (order.user as any)?.name || 'Customer',
+          email: order.billingAddress?.email || (order.user as any)?.email,
+          phone: order.billingAddress?.phone || (order.user as any)?.phone
+        },
+        email: order.billingAddress?.email || (order.user as any)?.email,
+        shippingAddress: order.shippingAddress || order.billingAddress || order.address,
+        items: order.items.map((item: any) => ({
+          productName: item.productName,
+          quantity: item.quantity,
+          pricePerItem: item.pricePerItem,
+          totalPrice: item.totalPrice,
+          size: item.size,
+          color: item.color,
+          image: item.primaryImage?.url || item.image
+        })),
+        subtotal: order.subtotal,
+        amount: order.amount,
+        discountAmount: order.discountAmount,
+        totalAmount: order.totalAmount,
+        total: order.totalAmount
+      };
+
+      await emailService.sendOrderConfirmationEmail(emailOrderData);
+      console.log('📧 Order confirmation email sent successfully');
+    } catch (emailError) {
+      console.error('❌ Failed to send order confirmation email:', emailError);
+      // Don't fail the verification if email fails
+    }
+
     return res.status(200).json({
       success: true,
       message: "Payment verified successfully",
