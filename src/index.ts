@@ -28,9 +28,10 @@ import designStudioUploadRouter from './routes/design-studio/upload';
 // import emailRouter from './routes/email';
 // import invoiceRouter from './routes/invoiceGenerator';
 import reviewRouter from './routes/review';
-// import designSubmissionRouter from './routes/designSubmission';
+import designSubmissionRouter from './routes/designSubmission';
 import feedRouter from './routes/feed';
 import adminStatusManagementRouter from './routes/admin/statusManagement';
+import threeDLogoRouter from './routes/threeDLogo';
 // import emailCampaignRoutes from './routes/emailCampaign'; // COMMENTED OUT DUE TO MISSING EXPORTS
 // import CronService from './services/cronService';
 import { errorHandler } from './middleware/errorMiddleware';
@@ -366,13 +367,8 @@ app.use('/assets', assetRoutes);
 // app.use('/email', emailRouter);
 // app.use('/invoices', invoiceRouter);
 app.use('/api', reviewRouter);
-// app.use('/design-challenge', designSubmissionRouter);
-
-// Google Shopping feed route
-app.use('/', feedRouter);
-
-// Admin routes
-app.use('/api/admin/status-management', adminStatusManagementRouter);
+app.use('/design-challenge', designSubmissionRouter);
+app.use('/3d-logo-printing', threeDLogoRouter);
 
 // app.use('/email-campaigns', emailCampaignRoutes);
 
