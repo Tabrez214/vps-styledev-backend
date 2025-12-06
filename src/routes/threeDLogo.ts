@@ -92,6 +92,41 @@ router.post('/submit-request', threeDLogoUpload.single('logoFile'), async (req: 
     }
 });
 
+// GET stats for 3D logo requests (admin only) - MUST be before /requests route
+router.get('/requests/stats/overview', authMiddleware, authorizeRoles('admin'), async (req: Request, res: Response) => {
+    try {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        const [total, recent, pending, reviewed, quoted, rejected] = await Promise.all([
+            ThreeDLogoRequest.countDocuments({}),
+            ThreeDLogoRequest.countDocuments({ submissionDate: { $gte: sevenDaysAgo } }),
+            ThreeDLogoRequest.countDocuments({ status: 'pending' }),
+            ThreeDLogoRequest.countDocuments({ status: 'reviewed' }),
+            ThreeDLogoRequest.countDocuments({ status: 'quoted' }),
+            ThreeDLogoRequest.countDocuments({ status: 'rejected' })
+        ]);
+
+        res.json({
+            success: true,
+            stats: {
+                total,
+                recent,
+                pending,
+                reviewed,
+                quoted,
+                rejected
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching 3D logo stats:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
+    }
+});
+
 // GET route to fetch all requests (admin only)
 router.get('/requests', authMiddleware, authorizeRoles('admin'), async (req: Request, res: Response) => {
     try {
