@@ -133,7 +133,7 @@ const config: EnvironmentConfig = {
   BACK_DESIGN_COST: parseInt(process.env.BACK_DESIGN_COST || '100', 10),
   STANDARD_SHIPPING_COST: parseInt(process.env.STANDARD_SHIPPING_COST || '100', 10),
   RUSH_SHIPPING_COST: parseInt(process.env.RUSH_SHIPPING_COST || '300', 10),
-  TAX_RATE: parseFloat(process.env.TAX_RATE || '0.18'),
+  TAX_RATE: parseFloat(process.env.TAX_RATE || '5'), // 5% as percentage number
 };
 
 // Validate the configuration

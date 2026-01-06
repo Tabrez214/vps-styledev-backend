@@ -59,19 +59,19 @@ export function mapOrderToInvoice(order: PopulatedOrder): Partial<IInvoice> {
   const items = extractInvoiceItems(order);
 
   // Calculate totals with proper GST breakdown
-  // Order totals already include GST (18% total = 9% CGST + 9% SGST)
+  // Order totals already include GST (5% total = 2.5% CGST + 2.5% SGST)
   const totalInclusive = order.totalAmount || 0;
   const discountAmount = order.discountAmount || 0;
 
-  // GST rates for India
-  const GST_RATE = 0.18; // 18% total GST
-  const cgstRate = 9;    // 9% CGST
-  const sgstRate = 9;    // 9% SGST
-  const igstRate = 0;    // 0% IGST for intra-state
+  // GST rates for India (all as percentage numbers)
+  const GST_RATE = 5;      // 5% total GST
+  const cgstRate = 2.5;    // 2.5% CGST
+  const sgstRate = 2.5;    // 2.5% SGST
+  const igstRate = 0;      // 0% IGST for intra-state
 
   // Calculate amounts excluding GST
   const totalAfterDiscount = totalInclusive - discountAmount;
-  const subtotalExclusive = totalAfterDiscount / (1 + GST_RATE);
+  const subtotalExclusive = totalAfterDiscount / (1 + GST_RATE / 100);
 
   // Calculate GST amounts
   const totalGSTAmount = totalAfterDiscount - subtotalExclusive;
@@ -286,8 +286,8 @@ function extractInvoiceItems(order: PopulatedOrder): IInvoiceItem[] {
     });
 
     // Calculate GST breakdown for this item (prices include GST)
-    const GST_RATE = 0.18;
-    const totalPriceExclusive = totalPriceInclusive / (1 + GST_RATE);
+    const GST_RATE = 5; // 5% as percentage number
+    const totalPriceExclusive = totalPriceInclusive / (1 + GST_RATE / 100);
     const pricePerItemExclusive = totalPriceExclusive / quantity;
 
     // Use explicit size and color fields with fallback to extraction functions

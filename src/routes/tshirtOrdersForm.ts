@@ -402,8 +402,8 @@ router.get('/invoices/order/:orderId', async (req: Request, res: Response) => {
       invoiceType: 'tax',
 
       // GST details (can be customized)
-      cgst: 9,
-      sgst: 9,
+      cgst: 2.5,
+      sgst: 2.5,
       igst: 0,
       cgstAmount: 0,
       sgstAmount: 0,

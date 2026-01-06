@@ -38,15 +38,48 @@ function getCategoryPath(categories: any[]): string {
   return category.name || 'Apparel & Accessories > Clothing';
 }
 
+// Base URL for the website - must match Google Merchant Center registered domain
+const BASE_URL = 'https://styledev.in';
+
+// Helper function to validate and format image URLs
+// Google accepts: JPEG, PNG, GIF, BMP, TIFF, WebP (NOT SVG)
+function getValidImageUrl(url: string | undefined): string | null {
+  if (!url) return null;
+
+  // Supported image extensions for Google Merchant Center
+  const supportedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp'];
+  const urlLower = url.toLowerCase();
+
+  // Check if the URL has a supported extension
+  const hasValidExtension = supportedExtensions.some(ext => urlLower.includes(ext));
+  if (!hasValidExtension) return null;
+
+  // Ensure URL uses the correct domain
+  if (url.startsWith('http')) {
+    // Replace any mismatched domains with BASE_URL
+    return url.replace(/^https?:\/\/[^\/]+/, BASE_URL);
+  }
+
+  return `${BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
+// Helper function to format price - Google requires format: "199.00 INR"
+function formatPrice(price: number | undefined): string {
+  if (!price || price <= 0) return '';
+  return `${price.toFixed(2)} INR`;
+}
+
 // Google Shopping XML Feed Route
 router.get('/feed.xml', async (req: Request, res: Response) => {
   try {
     console.log('Generating Google Shopping feed...');
 
     // Fetch active products with populated categories
+    // Only include products that have valid price and stock
     const products = await Product.find({
       isActive: true,
-      stock: { $gt: 0 } // Only include products with stock
+      stock: { $gt: 0 },
+      pricePerItem: { $gt: 0 } // Only include products with valid price
     })
       .populate('categories', 'name slug ancestors')
       .lean()
@@ -59,24 +92,36 @@ router.get('/feed.xml', async (req: Request, res: Response) => {
 <rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
   <channel>
     <title>StyleDev Products</title>
-    <link>https://styledev.in</link>
+    <link>${BASE_URL}</link>
     <description>Premium custom apparel and design services from StyleDev</description>
-    <language>en-US</language>
+    <language>en-IN</language>
     <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>`;
 
     // Add each product as an item
     products.forEach((product: any) => {
-      // Get primary image
-      const primaryImage = product.images?.find((img: any) => img.isDefault) || product.images?.[0];
-      const imageUrl = primaryImage?.url ?
-        (primaryImage.url.startsWith('http') ? primaryImage.url : `https://styledev.in${primaryImage.url}`) :
-        'https://styledev.in/default-product.jpg';
+      // Skip products without valid price
+      const price = formatPrice(product.pricePerItem);
+      if (!price) {
+        console.log(`Skipping product ${product._id} - no valid price`);
+        return;
+      }
 
-      // Get additional images (up to 10 total)
+      // Get primary image - must be valid format
+      const primaryImage = product.images?.find((img: any) => img.isDefault) || product.images?.[0];
+      const imageUrl = getValidImageUrl(primaryImage?.url);
+
+      // Skip products without valid images
+      if (!imageUrl) {
+        console.log(`Skipping product ${product._id} - no valid image`);
+        return;
+      }
+
+      // Get additional images (up to 10 total) - filter for valid formats only
       const additionalImages = product.images
         ?.filter((img: any) => img !== primaryImage)
+        ?.map((img: any) => getValidImageUrl(img.url))
+        ?.filter((url: string | null) => url !== null)
         ?.slice(0, 9)
-        ?.map((img: any) => img.url.startsWith('http') ? img.url : `https://styledev.in${img.url}`)
         ?.join(',') || '';
 
       // Get availability
@@ -92,17 +137,20 @@ router.get('/feed.xml', async (req: Request, res: Response) => {
       // Get category path
       const categoryPath = getCategoryPath(product.categories);
 
-      // Clean description
-      const cleanDescription = stripHtml(product.description || product.shortDescription || '');
+      // Clean description - must have content
+      const cleanDescription = stripHtml(product.description || product.shortDescription || product.name);
       const shortDesc = cleanDescription.length > 5000 ?
         cleanDescription.substring(0, 4997) + '...' : cleanDescription;
+
+      // Product URL - must match registered domain
+      const productUrl = `${BASE_URL}/products/${product._id}`;
 
       xml += `
     <item>
       <g:id>${product._id}</g:id>
       <g:title><![CDATA[${escapeXml(product.name)}]]></g:title>
       <g:description><![CDATA[${shortDesc}]]></g:description>
-      <g:link>https://styledev.in/products/${product._id}</g:link>
+      <g:link>${productUrl}</g:link>
       <g:image_link>${imageUrl}</g:image_link>`;
 
       // Add additional images if available
@@ -112,7 +160,7 @@ router.get('/feed.xml', async (req: Request, res: Response) => {
       }
 
       xml += `
-      <g:price>${product.pricePerItem} INR</g:price>
+      <g:price>${price}</g:price>
       <g:availability>${availability}</g:availability>
       <g:brand>StyleDev</g:brand>
       <g:condition>new</g:condition>
@@ -132,12 +180,12 @@ router.get('/feed.xml', async (req: Request, res: Response) => {
       <g:color><![CDATA[${colors}]]></g:color>`;
       }
 
-      // Add shipping info
+      // Add shipping info - MUST use same currency as product price (INR)
       xml += `
       <g:shipping>
         <g:country>IN</g:country>
         <g:service>Standard</g:service>
-        <g:price>100 INR</g:price>
+        <g:price>100.00 INR</g:price>
       </g:shipping>`;
 
       // Add minimum order quantity

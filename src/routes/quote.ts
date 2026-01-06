@@ -50,7 +50,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
     const additionalCostsTotal = additionalCosts.reduce((sum, cost) => sum + cost.amount, 0);
     const subtotal = basePrice + additionalCostsTotal;
-    const tax = Math.round(subtotal * 0.18);
+    const tax = Math.round(subtotal * 5 / 100); // 5% GST
     const shipping = 100;
     const total = subtotal + tax + shipping;
 
@@ -143,7 +143,7 @@ router.post('/checkout', async (req: Request, res: Response): Promise<void> => {
 
     const additionalCostsTotal = additionalCosts.reduce((sum, cost) => sum + cost.amount, 0);
     const subtotal = basePrice + additionalCostsTotal;
-    const tax = Math.round(subtotal * 0.18);
+    const tax = Math.round(subtotal * 5 / 100); // 5% GST
     const shipping = shippingMethod === 'rush' ? 300 : 100;
     const total = subtotal + tax + shipping;
 
