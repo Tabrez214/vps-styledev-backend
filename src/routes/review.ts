@@ -51,7 +51,7 @@ async function checkUserPurchase(userId: string, productId: string): Promise<boo
 router.get("/products/:id/reviews", async (req: Request, res: Response): Promise<void> => {
   try {
     const productId = req.params.id;
-    
+
     // Validate product ID
     if (!mongoose.Types.ObjectId.isValid(productId)) {
       res.status(400).json({ error: 'Invalid product ID' });
@@ -61,7 +61,7 @@ router.get("/products/:id/reviews", async (req: Request, res: Response): Promise
     // Validate query parameters
     const queryValidation = ReviewQuerySchema.safeParse(req.query);
     if (!queryValidation.success) {
-      res.status(400).json({ 
+      res.status(400).json({
         error: 'Invalid query parameters',
         details: queryValidation.error.errors
       });
@@ -106,9 +106,9 @@ router.get("/products/:id/reviews", async (req: Request, res: Response): Promise
 
     res.json({
       reviews,
-      pagination: { 
-        page, 
-        limit, 
+      pagination: {
+        page,
+        limit,
         total,
         totalPages: Math.ceil(total / limit)
       }
@@ -157,7 +157,7 @@ router.post("/products/:id/reviews", authMiddleware, async (req: Request, res: R
     // Validate request body
     const validation = CreateReviewSchema.safeParse(req.body);
     if (!validation.success) {
-      res.status(400).json({ 
+      res.status(400).json({
         error: 'Invalid review data',
         details: validation.error.errors
       });
@@ -194,9 +194,9 @@ router.post("/products/:id/reviews", authMiddleware, async (req: Request, res: R
     // Update product rating
     await updateProductRating(productId);
 
-    res.status(201).json({ 
-      message: 'Review created successfully', 
-      review 
+    res.status(201).json({
+      message: 'Review created successfully',
+      review
     });
   } catch (error) {
     console.error('Error creating review:', error);
@@ -324,6 +324,87 @@ router.post("/reviews/:id/helpful", authMiddleware, async (req: Request, res: Re
   } catch (error) {
     console.error('Error voting on review:', error);
     res.status(500).json({ error: 'Failed to vote' });
+  }
+});
+
+// DELETE /api/reviews/:id - Delete a review (own review or admin)
+router.delete("/reviews/:id", authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const reviewId = req.params.id;
+    const userId = req.user?.userId;
+    const userRole = req.user?.role;
+
+    if (!userId) {
+      res.status(401).json({ error: 'User not authenticated' });
+      return;
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(reviewId)) {
+      res.status(400).json({ error: 'Invalid review ID' });
+      return;
+    }
+
+    const review = await Review.findById(reviewId);
+    if (!review) {
+      res.status(404).json({ error: 'Review not found' });
+      return;
+    }
+
+    // Only the review author or an admin can delete
+    if (review.userId.toString() !== userId && userRole !== 'admin') {
+      res.status(403).json({ error: 'Not authorized to delete this review' });
+      return;
+    }
+
+    const productId = review.productId.toString();
+    await Review.findByIdAndDelete(reviewId);
+
+    // Recalculate product rating after deletion
+    await updateProductRating(productId);
+
+    res.json({ message: 'Review deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting review:', error);
+    res.status(500).json({ error: 'Failed to delete review' });
+  }
+});
+
+// POST /api/admin/reset-product-ratings - Reset all manually-set product ratings to 0 (admin only)
+router.post("/admin/reset-product-ratings", authMiddleware, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userRole = req.user?.role;
+
+    if (userRole !== 'admin') {
+      res.status(403).json({ error: 'Admin access required' });
+      return;
+    }
+
+    const products = await Product.find({});
+    let resetCount = 0;
+
+    for (const product of products) {
+      const pid = (product._id as mongoose.Types.ObjectId).toString();
+      const reviewCount = await Review.countDocuments({ productId: product._id });
+
+      if (reviewCount === 0 && (product.rating > 0 || product.totalReviews > 0)) {
+        await Product.findByIdAndUpdate(product._id, {
+          rating: 0,
+          totalReviews: 0,
+        });
+        resetCount++;
+      } else if (reviewCount > 0) {
+        await updateProductRating(pid);
+      }
+    }
+
+    res.json({
+      message: `Reset complete. ${resetCount} products with fake ratings were reset to 0.`,
+      resetCount,
+      totalProducts: products.length,
+    });
+  } catch (error) {
+    console.error('Error resetting product ratings:', error);
+    res.status(500).json({ error: 'Failed to reset product ratings' });
   }
 });
 

@@ -107,8 +107,7 @@ router.post("/products", authMiddleware, authorizeRoles("admin"), async (req, re
       superRushOrderDays: Number(req.body.superRushOrderDays) || 3,
       ...(req.body.metaTitle ? { metaTitle: req.body.metaTitle.trim() } : {}),
       ...(req.body.metaDescription ? { metaDescription: req.body.metaDescription.trim() } : {}),
-      ...(req.body.rating !== undefined ? { rating: parseFloat(req.body.rating) } : {}),
-      ...(req.body.totalReviews !== undefined ? { totalReviews: Number(req.body.totalReviews) } : {}),
+      // rating and totalReviews are auto-calculated from real customer reviews only
     };
 
     console.log("Validated product data:", parsedData);
@@ -359,8 +358,7 @@ router.put("/products/:id", authMiddleware, authorizeRoles("admin"), async (req,
       ...(req.body.superRushOrderDays !== undefined ? { superRushOrderDays: Number(req.body.superRushOrderDays) } : {}),
       ...(req.body.metaTitle !== undefined ? { metaTitle: req.body.metaTitle.trim() } : {}),
       ...(req.body.metaDescription !== undefined ? { metaDescription: req.body.metaDescription.trim() } : {}),
-      ...(req.body.rating !== undefined ? { rating: parseFloat(req.body.rating) } : {}),
-      ...(req.body.totalReviews !== undefined ? { totalReviews: Number(req.body.totalReviews) } : {}),
+      // rating and totalReviews are auto-calculated from real customer reviews only
     };
 
     const validatedProduct = ProductSchema.parse(updatedBody);
