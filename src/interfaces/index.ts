@@ -83,6 +83,20 @@ export type ElementProperties = TextProperties | ImageProperties | ClipArtProper
 /**
  * Design element interface
  */
+export interface PrintDimensions {
+  xInches?: number;
+  yInches?: number;
+  widthInches?: number;
+  heightInches?: number;
+  xPx?: number;
+  yPx?: number;
+  widthPx?: number;
+  heightPx?: number;
+  dpi?: number;
+  printableAreaWidthInches?: number;
+  printableAreaHeightInches?: number;
+}
+
 export interface DesignElement {
   id: string;
   type: 'text' | 'image' | 'clipart';
@@ -92,6 +106,7 @@ export interface DesignElement {
   layer: number;
   view: 'front' | 'back' | 'left' | 'right';
   properties: ElementProperties;
+  printDimensions?: PrintDimensions;
 }
 
 /**

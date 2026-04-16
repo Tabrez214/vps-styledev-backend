@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
 import { calculateDesignDimensions } from '../../utils/design';
 import { sendDesignSuccessEmail } from '../../lib/emailService';
+import config from '../../config/config';
 
 // Create a new design
 export const createDesign = async (req: Request, res: Response) => {
@@ -156,9 +157,9 @@ export const createDesign = async (req: Request, res: Response) => {
 
     await newDesign.save();
 
-    const privateLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/design-studio/${shareableId}`;
+    const privateLink = `${config.FRONTEND_URL}/design-studio/${shareableId}`;
     const publicLink = newDesign.isPublic
-      ? `${process.env.FRONTEND_URL || 'http://localhost:3000'}/share/${shareableId}`
+      ? `${config.FRONTEND_URL}/share/${shareableId}`
       : null;
 
     // Send congratulatory email asynchronously
@@ -426,7 +427,7 @@ export const sendDesignEmailManually = async (req: Request, res: Response) => {
       return;
     }
 
-    const designLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/design-studio/${designId}`;
+    const designLink = `${config.FRONTEND_URL}/design-studio/${designId}`;
     
     const designData = {
       designName: design.name,

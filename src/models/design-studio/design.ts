@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { IDesign, DesignMetadata, DesignElement, TShirtStyle, ViewDimensions } from '../../interfaces';
+import config from '../../config/config';
 
 // Create a type that extends Document with our interface
 export type DesignDocument = Document & IDesign;
@@ -77,6 +78,20 @@ const designElementSchema = new Schema<DesignElement>({
     fileSize: Number,
     mimeType: String,
     uploadedAt: Date
+  },
+  // Real print dimensions for manufacturer/printing
+  printDimensions: {
+    xInches: Number,
+    yInches: Number,
+    widthInches: Number,
+    heightInches: Number,
+    xPx: Number,
+    yPx: Number,
+    widthPx: Number,
+    heightPx: Number,
+    dpi: Number,
+    printableAreaWidthInches: Number,
+    printableAreaHeightInches: Number,
   }
 });
 
@@ -180,7 +195,7 @@ designSchema.index({ 'metadata.isDeleted': 1, createdAt: -1 });
 
 // Instance method to generate shareable URL
 designSchema.methods.getShareableUrl = function () {
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const baseUrl = config.FRONTEND_URL;
   return `${baseUrl}/design/${this.shareableId}`;
 };
 
