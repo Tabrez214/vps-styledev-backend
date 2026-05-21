@@ -6,6 +6,7 @@ export const ColorImageSchema = z.object({
   caption: z.string().optional(),
   isDefault: z.boolean().optional().default(false),
   imageAlt: z.string().optional(),
+  imageType: z.enum(["product", "design-studio"]).optional(),
 });
 
 // Define color schema

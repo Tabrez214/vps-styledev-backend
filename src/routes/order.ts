@@ -42,7 +42,7 @@ router.get("/", authMiddleware, async (req: RequestWithUser, res: Response) => {
     });
 
     const orders = await Order.find(query)
-      .select('order_id subtotal discountAmount totalAmount status createdAt items address shippingAddress billingAddress user name designOrderData paymentSource purchaseOrderNumber')
+      .select('order_id subtotal discountAmount totalAmount status createdAt items address shippingAddress billingAddress user name designOrderData paymentSource purchaseOrderNumber razorpay_payment_id')
       .populate({
         path: 'items.productId',
         select: 'name images colors pricePerItem',
@@ -115,6 +115,7 @@ router.get("/", authMiddleware, async (req: RequestWithUser, res: Response) => {
         } : null,
         totalAmount: (order as any).totalAmount,
         status: (order as any).status,
+        paymentStatus: (order as any).razorpay_payment_id ? 'paid' : ((order as any).status === 'completed' ? 'paid' : 'pending'),
         orderDate: (order as any).createdAt,
         // Customer information
         customer: {
@@ -182,8 +183,10 @@ router.get("/", authMiddleware, async (req: RequestWithUser, res: Response) => {
             quantity: item.quantity || 0,
             pricePerItem: item.pricePerItem || 0,
             totalPrice: item.totalPrice || 0,
-            color: item.color || 'N/A',
+            color: item.color && item.color !== 'Custom' && item.color !== 'Default' ? item.color : 
+                   (item.designData?.selectedShirt?.color || item.designData?.shirtInfo?.color || (order as any).designOrderData?.designInfo?.selectedShirt?.color || (order as any).designOrderData?.designInfo?.shirtInfo?.color || item.color || 'N/A'),
             size: item.size || 'N/A',
+            sizes: item.designData?.quantities || item.designData?.sizes || (order as any).designOrderData?.quantities || (order as any).designOrderData?.sizes || null,
             // Pass through existing image data
             primaryImage: item.primaryImage || null,
             fallbackImages: item.fallbackImages || [],
@@ -219,13 +222,17 @@ router.get("/", authMiddleware, async (req: RequestWithUser, res: Response) => {
         // Address information
         shippingAddress: addressData ? {
           fullName: addressData.fullName || addressData.name,
+          name: addressData.fullName || addressData.name,
           email: addressData.email,
           phoneNumber: addressData.phoneNumber || addressData.phone,
+          phone: addressData.phoneNumber || addressData.phone,
           address: addressData.streetAddress || addressData.street,
+          street: addressData.streetAddress || addressData.street, // Mapped for frontend UI
           city: addressData.city,
           state: addressData.state,
           country: addressData.country,
-          postalCode: addressData.postalCode || addressData.zipCode
+          postalCode: addressData.postalCode || addressData.zipCode,
+          zipCode: addressData.postalCode || addressData.zipCode // Mapped for frontend UI
         } : null,
         billingAddress: billingAddressData,
         // Raw address data for invoice generation
@@ -323,6 +330,7 @@ router.get("/:orderId", authMiddleware, async (req: RequestWithUser, res: Respon
       totalAmount: orderData.totalAmount,
       discountAmount: orderData.discountAmount || 0,
       status: orderData.status,
+      paymentStatus: orderData.razorpay_payment_id ? 'paid' : (orderData.status === 'completed' ? 'paid' : 'pending'),
       createdAt: orderData.createdAt,
       updatedAt: orderData.updatedAt,
       razorpay_payment_id: orderData.razorpay_payment_id || null,
@@ -343,8 +351,10 @@ router.get("/:orderId", authMiddleware, async (req: RequestWithUser, res: Respon
           price: item.price || item.pricePerItem || 0, // Backward compatibility
           pricePerItem: item.pricePerItem || 0,
           totalPrice: item.totalPrice || (item.pricePerItem * item.quantity) || 0,
-          color: item.color || 'N/A',
+          color: item.color && item.color !== 'Custom' && item.color !== 'Default' ? item.color : 
+                 (item.designData?.selectedShirt?.color || item.designData?.shirtInfo?.color || orderData.designOrderData?.designInfo?.selectedShirt?.color || orderData.designOrderData?.designInfo?.shirtInfo?.color || item.color || 'N/A'),
           size: item.size || 'N/A',
+          sizes: item.designData?.quantities || item.designData?.sizes || orderData.designOrderData?.quantities || orderData.designOrderData?.sizes || null,
           primaryImage: item.primaryImage || null,
           fallbackImages: item.fallbackImages || [],
           imageMetadata: item.imageMetadata || null,
@@ -359,7 +369,20 @@ router.get("/:orderId", authMiddleware, async (req: RequestWithUser, res: Respon
       }),
       // Address information - match the database structure
       address: addressData,
-      shippingAddress: orderData.shippingAddress || null,
+      shippingAddress: addressData ? {
+        fullName: addressData.fullName || addressData.name,
+        name: addressData.fullName || addressData.name,
+        email: addressData.email,
+        phoneNumber: addressData.phoneNumber || addressData.phone,
+        phone: addressData.phoneNumber || addressData.phone,
+        address: addressData.streetAddress || addressData.street,
+        street: addressData.streetAddress || addressData.street,
+        city: addressData.city,
+        state: addressData.state,
+        country: addressData.country,
+        postalCode: addressData.postalCode || addressData.zipCode,
+        zipCode: addressData.postalCode || addressData.zipCode
+      } : (orderData.shippingAddress || null),
       billingAddress: billingAddressData,
       user: orderData.user
     };

@@ -48,6 +48,7 @@ export const ProductSchema = z.object({
       caption: z.string().optional(),
       isDefault: z.boolean().optional().default(false),
       imageAlt: z.string().optional(),
+      imageType: z.enum(["product", "design-studio"]).optional(),
     })
   ).optional().default([]),
   categories: z.array(z.string()).optional().default([]),

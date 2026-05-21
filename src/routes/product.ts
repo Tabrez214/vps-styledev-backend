@@ -33,6 +33,7 @@ router.post("/products", authMiddleware, authorizeRoles("admin"), async (req, re
       caption: image.caption,
       isDefault: image.isDefault,
       imageAlt: image.imageAlt,
+      ...(image.imageType ? { imageType: image.imageType } : {}),
     }));
 
     // Process colors with images
@@ -49,6 +50,7 @@ router.post("/products", authMiddleware, authorizeRoles("admin"), async (req, re
           caption: image.caption || '',
           isDefault: image.isDefault || false,
           imageAlt: image.imageAlt || '',
+          ...(image.imageType ? { imageType: image.imageType } : {}),
         }));
       }
 
@@ -309,6 +311,7 @@ router.put("/products/:id", authMiddleware, authorizeRoles("admin"), async (req,
         caption: image.caption,
         isDefault: image.isDefault,
         imageAlt: image.imageAlt,
+        ...(image.imageType ? { imageType: image.imageType } : {}),
       }));
     }
 
@@ -328,6 +331,7 @@ router.put("/products/:id", authMiddleware, authorizeRoles("admin"), async (req,
             caption: image.caption || '',
             isDefault: image.isDefault || false,
             imageAlt: image.imageAlt || '',
+            ...(image.imageType ? { imageType: image.imageType } : {}),
           }));
         }
 

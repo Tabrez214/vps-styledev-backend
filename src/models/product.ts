@@ -14,8 +14,8 @@ interface IProduct extends Document {
   minimumOrderQuantity: number;
   stock: number;
   sizes: { size: string; stock: number }[];
-  colors: { name: string; hexCode: string; images?: { url: string; caption?: string; isDefault?: boolean; imageAlt?: string }[] }[];
-  images: { url: string; caption?: string; isDefault?: boolean; imageAlt?: string }[];
+  colors: { name: string; hexCode: string; images?: { url: string; caption?: string; isDefault?: boolean; imageAlt?: string; imageType?: 'product' | 'design-studio' }[] }[];
+  images: { url: string; caption?: string; isDefault?: boolean; imageAlt?: string; imageType?: 'product' | 'design-studio' }[];
   categories: mongoose.Schema.Types.ObjectId[];
   isActive: boolean;
   bulkPricing: IBulkPricing[];
@@ -76,6 +76,7 @@ const ProductSchema = new Schema<IProduct>(
         caption: { type: String },
         isDefault: { type: Boolean, default: false },
         imageAlt: { type: String },
+        imageType: { type: String, enum: ['product', 'design-studio'], default: undefined },
       },
     ],
     categories: [{ type: mongoose.Schema.Types.ObjectId, ref: "Category", required: true }],

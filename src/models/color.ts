@@ -5,6 +5,7 @@ export interface IColorImage {
   caption?: string;
   isDefault?: boolean;
   imageAlt?: string;
+  imageType?: 'product' | 'design-studio';
 }
 
 export interface IColor extends Document {
@@ -18,6 +19,7 @@ const ColorImageSchema = new Schema<IColorImage>({
   caption: { type: String },
   isDefault: { type: Boolean, default: false },
   imageAlt: { type: String },
+  imageType: { type: String, enum: ['product', 'design-studio'], default: undefined },
 });
 
 const ColorSchema = new Schema<IColor>({
