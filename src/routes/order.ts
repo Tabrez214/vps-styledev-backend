@@ -5,6 +5,7 @@ import Order from "../models/order"
 import Product from "../models/product"
 import Address from "../models/address"
 import DiscountCode from "../models/discount-codes"
+import Design from "../models/design"
 import { enrichOrderItemWithImages, batchEnrichOrderItems } from "../services/imageEnrichmentService"
 // import { OrderLinkingService } from "../services/orderLinkingService"
 // import { StatusManagementService } from "../services/statusManagementService"
@@ -41,7 +42,7 @@ router.get("/", authMiddleware, async (req: RequestWithUser, res: Response) => {
     });
 
     const orders = await Order.find(query)
-      .select('order_id subtotal discountAmount totalAmount status createdAt items address shippingAddress billingAddress user name')
+      .select('order_id subtotal discountAmount totalAmount status createdAt items address shippingAddress billingAddress user name designOrderData paymentSource purchaseOrderNumber')
       .populate({
         path: 'items.productId',
         select: 'name images colors pricePerItem',
@@ -59,6 +60,11 @@ router.get("/", authMiddleware, async (req: RequestWithUser, res: Response) => {
         path: 'discountCode',
         select: 'code discountType discountValue',
         model: 'DiscountCode'
+      })
+      .populate({
+        path: 'items.designId',
+        select: 'shareableId previewImages name tshirt',
+        model: 'Design'
       })
       .lean();
 
@@ -190,6 +196,13 @@ router.get("/", authMiddleware, async (req: RequestWithUser, res: Response) => {
               name: item.productId.name,
               images: item.productId.images || [],
               colors: item.productId.colors || []
+            } : null,
+            // Include design data for printing (design studio orders)
+            designId: item.designId ? {
+              shareableId: (item.designId as any).shareableId,
+              previewImages: (item.designId as any).previewImages,
+              name: (item.designId as any).name,
+              tshirt: (item.designId as any).tshirt
             } : null
           };
 
@@ -218,7 +231,11 @@ router.get("/", authMiddleware, async (req: RequestWithUser, res: Response) => {
         // Raw address data for invoice generation
         address: addressData,
         // Invoice type based on order status
-        invoiceType: (order as any).status === 'completed' ? 'tax' : 'proforma'
+        invoiceType: (order as any).status === 'completed' ? 'tax' : 'proforma',
+        // Design studio order data for printing
+        designOrderData: (order as any).designOrderData || null,
+        paymentSource: (order as any).paymentSource || 'cart',
+        purchaseOrderNumber: (order as any).purchaseOrderNumber || null
       };
     });
 
