@@ -63,8 +63,18 @@ router.post("/add", authMiddleware, async (req: RequestWithUser, res: Response) 
       }
 
       const existingProduct = cart.products.find(
-        (p: any) => p.product.toString() === item.product && p.size === item.size
+        (p: any) => p.product.toString() === item.product && p.size === item.size && p.color === (item.color || product.colors[0]?.name)
       );
+
+      // Resolve the correct color name — use frontend-provided color, fallback to first available
+      const resolvedColor = item.color || product.colors[0]?.name || '';
+
+      // Resolve product image for the selected color
+      const matchingColorObj = product.colors.find((c: any) => c.name === resolvedColor);
+      const resolvedImageUrl = matchingColorObj?.images?.find((img: any) => img.isDefault)?.url
+        || matchingColorObj?.images?.[0]?.url
+        || product.images?.[0]?.url
+        || '';
 
       if (existingProduct) {
         existingProduct.quantity += item.quantity;
@@ -72,11 +82,13 @@ router.post("/add", authMiddleware, async (req: RequestWithUser, res: Response) 
       } else {
         cart.products.push({
           product: item.product,
+          productName: product.name,
           size: item.size,
           quantity: item.quantity,
           pricePerItem: product.pricePerItem,
           totalPrice: product.pricePerItem * item.quantity,
-          color: product.colors[0].name, // Assign first available color
+          color: resolvedColor,
+          imageUrl: resolvedImageUrl,
         });
       }
 
@@ -112,13 +124,13 @@ router.get('/', authMiddleware, async (req: RequestWithUser, res: Response) => {
     const response = {
       products: cart.products.map((item: any) => ({
         productId: (item.product as any)._id,
-        productName: (item.product as any).name,
-        color: (item.product as any).colors[0].name,
+        productName: item.productName || (item.product as any).name,
+        color: item.color,
         size: item.size,
         quantity: item.quantity,
         pricePerItem: item.pricePerItem,
         totalPrice: item.totalPrice,
-        imageUrl: (item.product as any).images.find((image: { isDefault: any; }) => image.isDefault)?.url || (item.product as any).images[0]?.url
+        imageUrl: item.imageUrl || (item.product as any).images?.find((image: { isDefault: any; }) => image.isDefault)?.url || (item.product as any).images?.[0]?.url
       })),
       totalAmount: cart.totalAmount
     };
@@ -138,7 +150,7 @@ router.patch("/update", authMiddleware, async (req: RequestWithUser, res: Respon
       return;
     }
 
-    const { productId, size, quantity } = req.body;
+    const { productId, size, quantity, color } = req.body;
 
     if (!productId || !size || quantity === undefined) {
       res.status(400).json({ message: "Missing required fields" });
@@ -153,7 +165,7 @@ router.patch("/update", authMiddleware, async (req: RequestWithUser, res: Respon
     }
 
     const productIndex = cart.products.findIndex(
-      (item: any) => item.product.toString() === productId && item.size === size
+      (item: any) => item.product.toString() === productId && item.size === size && (!color || item.color === color)
     );
 
     if (productIndex === -1) {
