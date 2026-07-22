@@ -90,7 +90,7 @@ export const checkout = async (req: Request, res: Response) => {
         // Create a single order item for the design order
         const totalQuantity = Object.values(designOrder.quantities || {}).reduce((sum: number, qty: any) => sum + (qty || 0), 0);
         orderItems.push({
-          designId: designOrder.designId,
+          designId: (designOrder.designId && /^[0-9a-fA-F]{24}$/.test(designOrder.designId)) ? designOrder.designId : undefined,
           quantity: totalQuantity,
           pricePerItem: totalQuantity > 0 ? subtotal / totalQuantity : subtotal, // Standardized field name
           totalPrice: subtotal,
@@ -271,7 +271,7 @@ export const checkout = async (req: Request, res: Response) => {
         const designOrderRecord = new DesignOrder({
           orderNumber: order.order_id,
           mainOrderId: order._id, // Enhanced linking: Reference to main order
-          designId: designOrder.designId,
+          designId: (designOrder.designId && /^[0-9a-fA-F]{24}$/.test(designOrder.designId)) ? designOrder.designId : '000000000000000000000000',
           customer: {
             email: finalEmail,
             name: (req as any).user?.name || address.fullName || 'Customer',
@@ -476,7 +476,7 @@ export const expressCheckout = async (req: Request, res: Response) => {
         // Only add to orderItems if this is a valid design order item
         if (item.isDesignOrder) {
           orderItems.push({
-            designId: item.designId,
+            designId: (item.designId && /^[0-9a-fA-F]{24}$/.test(item.designId)) ? item.designId : undefined,
             productName: item.productName || "Custom Design", // Add required field
             primaryImage: { // Add required nested object
               url: item.primaryImage?.url || item.imageUrl || "https://api.styledev.in/uploads/design-default.jpg",
