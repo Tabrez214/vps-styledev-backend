@@ -8,6 +8,8 @@ export const SizeSchema = z.object({
   XL: z.number().min(0).default(0),
   "2XL": z.number().min(0).default(0),
   "3XL": z.number().min(0).default(0),
+  "4XL": z.number().min(0).default(0),
+  "5XL": z.number().min(0).default(0),
 });
 
 export type Size = z.infer<typeof SizeSchema>;

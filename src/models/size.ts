@@ -8,6 +8,8 @@ export interface ISize extends Document {
   XL: number;
   "2XL": number;
   "3XL": number;
+  "4XL": number;
+  "5XL": number;
 }
 
 const SizeSchema = new Schema<ISize>({
@@ -18,6 +20,8 @@ const SizeSchema = new Schema<ISize>({
   XL: { type: Number, default: 0 },
   "2XL": { type: Number, default: 0 },
   "3XL": { type: Number, default: 0 },
+  "4XL": { type: Number, default: 0 },
+  "5XL": { type: Number, default: 0 },
 });
 
 const Size = mongoose.model<ISize>("Size", SizeSchema);

@@ -4,7 +4,7 @@
  */
 
 // Standard Size Enum - Single source of truth
-export const STANDARD_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL"] as const;
+export const STANDARD_SIZES = ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"] as const;
 export type StandardSize = typeof STANDARD_SIZES[number];
 
 // Standard Address Interface

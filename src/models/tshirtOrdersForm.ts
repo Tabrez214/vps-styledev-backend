@@ -56,7 +56,7 @@ const TShirtOrderFormSchema: Schema = new Schema({
     {
       size: {
         type: String,
-        enum: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
+        enum: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"],
         required: true,
       },
       quantity: { type: Number, required: true, min: 0 },

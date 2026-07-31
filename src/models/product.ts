@@ -63,7 +63,7 @@ const ProductSchema = new Schema<IProduct>(
       {
         size: {
           type: String,
-          enum: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
+          enum: ["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"],
           required: true,
         },
         stock: { type: Number, default: 0 },

@@ -37,7 +37,7 @@ export const ProductSchema = z.object({
   stock: z.number().nonnegative("Stock must be a non-negative number"),
   sizes: z.array(
     z.object({
-      size: z.enum(["XS", "S", "M", "L", "XL", "2XL", "3XL"]),
+      size: z.enum(["XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL"]),
       stock: z.number().nonnegative("Stock must be a non-negative number"),
     })
   ),
