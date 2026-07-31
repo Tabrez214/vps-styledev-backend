@@ -42,9 +42,16 @@ router.post("/add", authMiddleware, async (req: RequestWithUser, res: Response) 
       console.log('Requested quantity:', item.quantity);
 
       // Find the size object in the array
-      const sizeObj = product.sizes.find(s => s.size === item.size);
+      const sizeObj = product.sizes && Array.isArray(product.sizes)
+        ? product.sizes.find((s: any) => s.size === item.size)
+        : null;
+
       if (sizeObj) {
         stockQuantity = sizeObj.stock;
+        hasStock = stockQuantity >= item.quantity;
+      } else {
+        // Fallback: If specific size is not individually tracked in product.sizes, check overall product stock
+        stockQuantity = product.stock || 9999;
         hasStock = stockQuantity >= item.quantity;
       }
 
@@ -194,9 +201,16 @@ router.patch("/update", authMiddleware, async (req: RequestWithUser, res: Respon
     let stockQuantity = 0;
     
     // Find the size object in the array
-    const sizeObj = product.sizes.find(s => s.size === size);
+    const sizeObj = product.sizes && Array.isArray(product.sizes)
+      ? product.sizes.find((s: any) => s.size === size)
+      : null;
+
     if (sizeObj) {
       stockQuantity = sizeObj.stock;
+      hasStock = stockQuantity >= quantity;
+    } else {
+      // Fallback: If specific size is not individually tracked in product.sizes, check overall product stock
+      stockQuantity = product.stock || 9999;
       hasStock = stockQuantity >= quantity;
     }
 
