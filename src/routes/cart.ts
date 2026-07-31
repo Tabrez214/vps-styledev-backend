@@ -95,7 +95,7 @@ router.post("/add", authMiddleware, async (req: RequestWithUser, res: Response) 
       totalAmount += product.pricePerItem * item.quantity;
     }
 
-    cart.totalAmount = totalAmount;
+    cart.totalAmount = cart.products.reduce((sum: number, item: any) => sum + (item.totalPrice || 0), 0);
     await cart.save();
 
     res.status(201).json({ message: "Added to Cart.", cart });
@@ -121,6 +121,12 @@ router.get('/', authMiddleware, async (req: RequestWithUser, res: Response) => {
       return;
     }
 
+    const recalculatedTotal = cart.products.reduce((sum: number, item: any) => sum + (item.totalPrice || 0), 0);
+    if (cart.totalAmount !== recalculatedTotal) {
+      cart.totalAmount = recalculatedTotal;
+      await cart.save();
+    }
+
     const response = {
       products: cart.products.map((item: any) => ({
         productId: (item.product as any)._id,
@@ -132,7 +138,7 @@ router.get('/', authMiddleware, async (req: RequestWithUser, res: Response) => {
         totalPrice: item.totalPrice,
         imageUrl: item.imageUrl || (item.product as any).images?.find((image: { isDefault: any; }) => image.isDefault)?.url || (item.product as any).images?.[0]?.url
       })),
-      totalAmount: cart.totalAmount
+      totalAmount: recalculatedTotal
     };
 
     console.log("Cart fetched:", response);
