@@ -6,6 +6,7 @@ import { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
 import Order from "../models/order";
 import Address from "../models/address";
+import Cart from "../models/cart";
 
 const router = Router();
 
@@ -181,14 +182,16 @@ router.post("/verify", (req: Request, res: Response, next: NextFunction) => {
   verifyPayment().catch(next);
 });
 
-// Debug endpoint to check environment variables
+// Debug endpoint - DISABLED in production
 router.get("/debug/env", (req: Request, res: Response, next: NextFunction) => {
   try {
+    if (process.env.NODE_ENV === 'production') {
+      res.status(404).json({ message: 'Not found' });
+      return;
+    }
     res.json({
       hasRazorpayKeyId: !!process.env.RAZORPAY_KEY_ID,
       hasRazorpaySecret: !!process.env.RAZORPAY_KEY_SECRET,
-      keyIdLength: process.env.RAZORPAY_KEY_ID?.length || 0,
-      keyIdPreview: process.env.RAZORPAY_KEY_ID?.substring(0, 10) + "..." || "NOT SET",
       nodeEnv: process.env.NODE_ENV,
       backendRunning: true
     });
@@ -242,6 +245,91 @@ router.get("/order/:orderId", (req: Request, res: Response, next: NextFunction) 
   };
 
   getOrderDetails().catch(next);
+});
+
+// Razorpay Webhook handler — catches payments even if user's browser crashes
+router.post("/webhook", (req: Request, res: Response, next: NextFunction) => {
+  const handleWebhook = async () => {
+    try {
+      const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+      // Verify webhook signature if secret is configured
+      if (webhookSecret) {
+        const receivedSignature = req.headers['x-razorpay-signature'] as string;
+        if (!receivedSignature) {
+          console.log('❌ Webhook: Missing signature header');
+          return res.status(400).json({ success: false, message: 'Missing signature' });
+        }
+
+        const expectedSignature = crypto
+          .createHmac('sha256', webhookSecret)
+          .update(JSON.stringify(req.body))
+          .digest('hex');
+
+        if (expectedSignature !== receivedSignature) {
+          console.log('❌ Webhook: Signature verification failed');
+          return res.status(400).json({ success: false, message: 'Invalid signature' });
+        }
+      }
+
+      const { event, payload } = req.body;
+      console.log('🔔 Webhook event received:', event);
+
+      if (event === 'payment.captured') {
+        const paymentEntity = payload?.payment?.entity;
+        if (!paymentEntity) {
+          return res.status(400).json({ success: false, message: 'Invalid payload' });
+        }
+
+        const razorpay_order_id = paymentEntity.order_id;
+        const razorpay_payment_id = paymentEntity.id;
+
+        // Find the order
+        const order = await Order.findOne({ razorpay_order_id });
+        if (!order) {
+          console.log('⚠️ Webhook: Order not found for razorpay_order_id:', razorpay_order_id);
+          return res.status(200).json({ success: true, message: 'Order not found, skipping' });
+        }
+
+        // Idempotency: skip if already completed
+        if (order.status === 'completed') {
+          console.log('✅ Webhook: Order already completed, skipping:', order.order_id);
+          return res.status(200).json({ success: true, message: 'Already processed' });
+        }
+
+        // Update order
+        order.razorpay_payment_id = razorpay_payment_id;
+        order.status = 'completed';
+        await order.save();
+
+        // Clear user's cart after successful payment
+        if (order.user) {
+          await Cart.findOneAndDelete({ user: order.user });
+        }
+
+        console.log('✅ Webhook: Order completed via webhook:', order.order_id);
+      } else if (event === 'payment.failed') {
+        const paymentEntity = payload?.payment?.entity;
+        if (paymentEntity?.order_id) {
+          const order = await Order.findOne({ razorpay_order_id: paymentEntity.order_id });
+          if (order && order.status === 'pending') {
+            order.status = 'failed';
+            await order.save();
+            console.log('❌ Webhook: Order marked failed:', order.order_id);
+          }
+        }
+      }
+
+      // Always return 200 to Razorpay to acknowledge receipt
+      return res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('❌ Webhook error:', error);
+      // Return 200 even on error to prevent Razorpay from retrying indefinitely
+      return res.status(200).json({ success: true, message: 'Acknowledged with error' });
+    }
+  };
+
+  handleWebhook().catch(next);
 });
 
 export default router;

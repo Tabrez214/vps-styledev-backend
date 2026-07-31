@@ -332,6 +332,12 @@ const orderSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+// Database indexes for query performance at scale
+orderSchema.index({ user: 1, createdAt: -1 });        // User order listing
+orderSchema.index({ razorpay_order_id: 1 });           // Payment verification lookup
+orderSchema.index({ razorpay_payment_id: 1 });         // Payment verification lookup
+orderSchema.index({ status: 1, createdAt: -1 });       // Admin order filtering
+orderSchema.index({ verificationToken: 1, tokenExpiry: 1 }); // Thank-you page token lookup
 
 const orderModel = mongoose.models.Order || mongoose.model<IOrder>("Order", orderSchema);
 export default orderModel;

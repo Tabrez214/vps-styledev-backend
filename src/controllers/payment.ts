@@ -154,13 +154,8 @@ export const checkout = async (req: Request, res: Response) => {
             discountAmount = 0;
             discountCodeId = null;
             console.log("Coupon expired during checkout:", couponInfo.coupon.code);
-          } else {
-            // Increment usage count for the discount code
-            await DiscountCode.findByIdAndUpdate(
-              discount._id,
-              { $inc: { usageCount: 1 } }
-            );
           }
+          // NOTE: Usage count increment moved to verification handler (after payment success)
         }
 
         totalAmount = subtotal - discountAmount;
@@ -196,11 +191,7 @@ export const checkout = async (req: Request, res: Response) => {
           discountCodeId = discount._id;
           totalAmount = subtotal - discountAmount;
 
-          // Increment usage count for the discount code
-          await DiscountCode.findByIdAndUpdate(
-            discount._id,
-            { $inc: { usageCount: 1 } }
-          );
+          // NOTE: Usage count increment moved to verification handler (after payment success)
 
           console.log("Discount applied:", {
             code: discountCode,
@@ -219,7 +210,7 @@ export const checkout = async (req: Request, res: Response) => {
       // Create a new order with all required fields
       const orderData: any = {
         name: `Order-${Date.now()}`, // Add required name field
-        order_id: `order_${Date.now()}`, // Add required order_id field
+        order_id: `order_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
         user: userId,
         items: orderItems,
         address: standardizedAddress, // Use standardized address (keeping for backward compatibility)
@@ -592,10 +583,7 @@ export const expressCheckout = async (req: Request, res: Response) => {
         discountCodeId = discount._id;
         totalAmount = subtotal - discountAmount;
 
-        await DiscountCode.findByIdAndUpdate(
-          discount._id,
-          { $inc: { usageCount: 1 } }
-        );
+        // NOTE: Usage count increment moved to verification handler (after payment success)
       }
     }
 
@@ -639,7 +627,7 @@ export const expressCheckout = async (req: Request, res: Response) => {
     });
 
     // Generate unique order ID
-    const orderIdString = `EXPRESS-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const orderIdString = `EXPRESS-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
 
     // Create order in database
     const orderData: any = {
@@ -855,30 +843,27 @@ export const verification = async (req: Request, res: Response) => {
       customerContact, // From Razorpay response
       customerInfo, // Additional customer info
       isExpressCheckout, // Flag to indicate express checkout
-      isDemoPayment // Flag for demo/test payments
     } = req.body;
 
-    // Skip signature verification for demo/test payments
-    let isAuthentic = true;
+    // SECURITY: Always verify payment signature — no bypasses allowed
+    if (!razorpay_signature) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment signature is required for verification"
+      });
+    }
 
-    // Only verify signature if it's provided and not a demo payment
-    if (razorpay_signature && !isDemoPayment) {
-      const body = razorpay_order_id + "|" + razorpay_payment_id;
-      const expectedSignature = crypto
-        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "")
-        .update(body)
-        .digest("hex");
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "")
+      .update(body)
+      .digest("hex");
 
-      isAuthentic = expectedSignature === razorpay_signature;
-
-      if (!isAuthentic) {
-        return res.status(400).json({
-          success: false,
-          message: "Payment verification failed"
-        });
-      }
-    } else if (!razorpay_signature && !isDemoPayment) {
-      console.log('⚠️ Warning: Signature verification skipped - no signature provided');
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment verification failed — invalid signature"
+      });
     }
 
     // Find and update order by razorpay_order_id or payment_id
@@ -889,24 +874,7 @@ export const verification = async (req: Request, res: Response) => {
       order = await Order.findOne({ razorpay_payment_id }).populate('user');
     }
 
-    // If still not found, try to find the most recent express checkout order
-    if (!order && isExpressCheckout) {
-      console.log('🔍 Order not found by IDs, searching for recent express checkout orders...');
-      order = await Order.findOne({
-        isExpressCheckout: true,
-        status: 'pending'
-      }).sort({ createdAt: -1 }).populate('user');
-
-      if (order) {
-        console.log('🔍 Found recent express checkout order:', order.order_id);
-      } else {
-        console.log('⚠️ No recent express checkout orders found');
-        return res.status(404).json({
-          success: false,
-          message: "No pending express checkout orders found"
-        });
-      }
-    }
+    // SECURITY: Removed unsafe fallback that could match wrong user's order
 
     if (!order) {
       return res.status(404).json({
@@ -915,41 +883,10 @@ export const verification = async (req: Request, res: Response) => {
       });
     }
 
-    // Update payment details
-    order.razorpay_payment_id = razorpay_payment_id || order.razorpay_payment_id || `demo_${Date.now()}`;
-    if (razorpay_signature) {
-      order.razorpay_signature = razorpay_signature;
-    }
+    // Update payment details — amounts are NEVER overridden from client
+    order.razorpay_payment_id = razorpay_payment_id;
+    order.razorpay_signature = razorpay_signature;
     order.status = "completed";
-
-    // Use values from request body when provided, with fallbacks for demo payments
-    if (req.body.subtotal !== undefined) {
-      order.subtotal = req.body.subtotal;
-    } else if (isDemoPayment && order.subtotal === undefined) {
-      // Ensure subtotal is set if missing for demo payments
-      order.subtotal = order.totalAmount || order.amount || 0;
-    }
-
-    if (req.body.totalAmount !== undefined) {
-      order.totalAmount = req.body.totalAmount;
-    } else if (isDemoPayment && order.totalAmount === undefined) {
-      // Ensure totalAmount is set if missing for demo payments
-      order.totalAmount = order.amount || order.subtotal || 0;
-    }
-
-    if (req.body.amount !== undefined) {
-      order.amount = req.body.amount;
-    } else if (isDemoPayment && order.amount === undefined) {
-      // Ensure amount is set if missing for demo payments
-      order.amount = order.totalAmount || order.subtotal || 0;
-    }
-
-    if (req.body.discountAmount !== undefined) {
-      order.discountAmount = req.body.discountAmount;
-    } else if (isDemoPayment && order.discountAmount === undefined) {
-      // Ensure discountAmount is set if missing for demo payments
-      order.discountAmount = 0;
-    }
 
     // Update billing address if provided (for express checkout)
     const addressToUpdate = billingAddress || shippingAddress || customerInfo;
@@ -995,26 +932,17 @@ export const verification = async (req: Request, res: Response) => {
           country: updatedBillingAddress.country
         });
       }
-    } else {
-      // For demo payments without billing address, create a default one
-      if (isDemoPayment && !order.billingAddress) {
-        const defaultAddress = {
-          name: (order.user as any)?.name || 'Demo Customer',
-          email: (order.user as any)?.email || 'demo@example.com',
-          phone: (order.user as any)?.phone || '9876543210',
-          street: 'Demo Street 123',
-          city: 'Demo City',
-          state: 'Demo State',
-          zipCode: '123456',
-          country: 'India',
-          gstNumber: ''
-        };
-        order.billingAddress = defaultAddress;
-        order.shippingAddress = defaultAddress;
-      }
     }
 
     await order.save();
+
+    // Increment discount code usage count AFTER successful payment
+    if (order.discountCode) {
+      await DiscountCode.findByIdAndUpdate(
+        order.discountCode,
+        { $inc: { usageCount: 1 } }
+      );
+    }
 
     // Update DesignOrder if this was a design order
     if (order.designOrderData) {
@@ -1034,7 +962,7 @@ export const verification = async (req: Request, res: Response) => {
       isGuestOrder: order.isGuestOrder,
       amount: order.totalAmount,
       userEmail: (order.user as any)?.email,
-      paymentType: isDemoPayment ? 'demo' : 'real'
+      paymentVerified: true
     });
 
     // Send order confirmation email
@@ -1089,7 +1017,7 @@ export const verification = async (req: Request, res: Response) => {
         isExpressCheckout: order.isExpressCheckout,
         userEmail: (order.user as any)?.email,
         billingAddress: order.billingAddress,
-        paymentType: isDemoPayment ? 'demo' : 'real',
+        paymentVerified: true,
         paymentId: order.razorpay_payment_id
       },
       // Include guest session data if applicable

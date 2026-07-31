@@ -1,4 +1,5 @@
 import express, { type Response } from "express"
+import crypto from "crypto"
 import { authMiddleware, type RequestWithUser } from "../middleware/authMiddleware"
 import { authorizeRoles } from "../middleware/roleMiddleware"
 import Order from "../models/order"
@@ -553,7 +554,7 @@ router.post("/", authMiddleware, async (req: RequestWithUser, res) => {
       discountCode: discountCodeId,
       discountAmount: discountAmount,
       totalAmount: totalAmount,
-      order_id: `order_${Date.now()}`,
+      order_id: `order_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`,
       address,
       status: "pending"
     })
@@ -590,8 +591,8 @@ router.put("/:id", authMiddleware, authorizeRoles("admin"), async (req, res) => 
   try {
     const { status } = req.body
 
-    if (!["pending", "completed", "failed"].includes(status)) {
-      res.status(400).json({ message: "Invalid order status" })
+    if (!["pending", "completed", "failed", "processing", "shipped", "delivered", "cancelled", "returned", "refunded"].includes(status)) {
+      res.status(400).json({ message: "Invalid order status. Allowed: pending, processing, shipped, delivered, completed, cancelled, returned, refunded, failed" })
       return
     }
 

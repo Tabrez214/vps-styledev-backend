@@ -4,8 +4,6 @@ import Cart from '../models/cart';
 import Product from '../models/product';
 
 const router = express.Router();
-const app = express();
-app.use(express.json());
 
 router.post("/add", authMiddleware, async (req: RequestWithUser, res: Response) => {
   try {
@@ -255,6 +253,7 @@ router.delete('/remove/:productId', authMiddleware, async (req: RequestWithUser,
     }
 
     const { productId } = req.params;
+    const { color, size } = req.query;
 
     const cart = await Cart.findOne({ user: req.user.userId });
     if (!cart) {
@@ -262,7 +261,15 @@ router.delete('/remove/:productId', authMiddleware, async (req: RequestWithUser,
       return;
     }
 
-    cart.products = cart.products.filter((item: any) => item.product.toString() !== productId);
+    // Filter by productId, and optionally by color and size to avoid removing all variants
+    cart.products = cart.products.filter((item: any) => {
+      const matchesProduct = item.product.toString() === productId;
+      if (!matchesProduct) return true; // keep items that don't match productId
+      // If color/size specified, only remove the exact match
+      if (color && item.color !== color) return true;
+      if (size && item.size !== size) return true;
+      return false; // remove this item
+    });
     cart.totalAmount = cart.products.reduce((sum: number, item: any) => sum + item.totalPrice, 0);
 
     await cart.save();
