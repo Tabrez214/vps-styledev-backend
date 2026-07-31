@@ -350,8 +350,19 @@ app.use('/cart', cartRouter);
 app.use('/category', categoryRouter)
 app.use('/address', addressRouter)
 
+import rateLimit from 'express-rate-limit';
+
+// Rate limiter for payment routes (30 requests per 15 minutes per IP)
+const paymentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many payment requests from this IP, please try again later." }
+});
+
 // Use the payment router for payment-related routes
-app.use('/api/payment', paymentRouter);
+app.use('/api/payment', paymentLimiter, paymentRouter);
 app.use('/discount-codes', discountRouter);
 
 app.use('/', subscribeRouter);
